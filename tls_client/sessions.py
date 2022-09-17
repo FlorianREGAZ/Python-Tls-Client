@@ -4,6 +4,7 @@ from .__version__ import __version__
 
 from typing import Optional, Union
 from json import dumps, loads
+import urllib.parse
 import ctypes
 
 
@@ -118,7 +119,7 @@ class Session:
         self,
         method: str,
         url: str,
-        params: Optional[dict[str, str]] = None,  # TODO - params with same name
+        params: Optional[dict[str, str]] = None,
         data: Optional[Union[str, dict]] = None,
         headers: Optional[dict[str, str]] = None,
         cookies: Optional[dict[str, str]] = None,
@@ -128,15 +129,51 @@ class Session:
         timeout_seconds: Optional[int] = 30,
         proxies: Optional[dict[str, str]] = None
     ):
-
+        # --- URL ------------------------------------------------------------------------------------------------------
         # Prepare URL - add params to url
+        if params is not None:
+            url = f"{url}?{urllib.parse.urlencode(params, doseq=True)}"
 
+        # --- Request Body ---------------------------------------------------------------------------------------------
         # Prepare request body - build request body
-        # Data has priority. JSON ist only used if data is None.
-        request_body = json + data  # TODO
+        # Data has priority. JSON is only used if data is None.
+        if data is None and json is not None:
+            if type(json) in [dict, list]:
+                json = dumps(json)
+            request_body = json
+            content_type = "application/json"
+        elif type(data) not in [str, bytes]:
+            request_body = urllib.parse.urlencode(data, doseq=True)
+            content_type = "application/x-www-form-urlencoded"
+        else:
+            request_body = data
+            content_type = None
+        # set content type if it isn't set
+        if content_type is not None and "content-type" not in self.headers:
+            self.headers["Content-Type"] = content_type
 
-        # Prepare proxy - format proxy correctly
+        # --- Headers --------------------------------------------------------------------------------------------------
+        # merge headers of session and of the request
+        if headers is not None:
+            for header_key, header_value in headers.items():
+                # check if all header keys and values are strings
+                if type(header_key) is str and type(header_value) is str:
+                    self.headers[header_key] = header_value
+        else:
+            headers = self.headers
 
+        # set content length header
+        if method not in ["GET", "HEAD"] and request_body is not None:
+            headers["Content-Length"] = str(len(request_body))
+        elif method not in ["GET", "HEAD"] and request_body is None:
+            headers["Content-Length"] = "0"
+        # --- Cookies --------------------------------------------------------------------------------------------------
+        # TODO
+
+        # --- Proxy ------ ---------------------------------------------------------------------------------------------
+        # TODO Prepare proxy - format proxy correctly
+
+        # --- Request ---- ---------------------------------------------------------------------------------------------
         request_payload = {
             "proxyUrl": "",  # TODO
             "followRedirects": allow_redirects,
@@ -162,11 +199,11 @@ class Session:
             request_payload["tlsClientIdentifier"] = self.client_identifier
 
         # this is a pointer to the response
-        response = request(json.dumps(request_payload).encode('utf-8'))
-        # we dereference the pointer to a byte array
+        response = request(dumps(request_payload).encode('utf-8'))
+        # dereference the pointer to a byte array
         response_bytes = ctypes.string_at(response)
         # convert our byte array to a string (tls client returns json)
         response_string = response_bytes.decode('utf-8')
         # convert response string to json
-        response_object = json.loads(response_string)  # TODO convert to response class
+        response_object = loads(response_string)  # TODO convert to response class
 

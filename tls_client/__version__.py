@@ -4,6 +4,6 @@
 #  / / / /____\ \_____/ /___| | |  __/ | | | |_
 #  \/  \____/\__/     \____/|_|_|\___|_| |_|\__|
 
-__title__ = "tls-client"
+__title__ = "tls_client"
 __description__ = "Advanced Python HTTP Client."
 __version__ = "0.0.1"
