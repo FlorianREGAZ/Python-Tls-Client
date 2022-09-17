@@ -7,3 +7,4 @@
 __title__ = "pytls_client"
 __description__ = "Advanced Python HTTP Client."
 __version__ = "0.0.1"
+__author__ = "Florian Zager"
