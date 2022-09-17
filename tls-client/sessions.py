@@ -1,7 +1,11 @@
+from .cffi import request
 from .structures import CaseInsensitiveDict
 from .__version__ import __version__
 
-from typing import Optional
+from typing import Optional, Union
+from json import dumps, loads
+import ctypes
+
 
 class Session:
 
@@ -109,3 +113,59 @@ class Session:
         #   "key2"
         # ]
         self.header_order = header_order
+
+    def execute_request(
+        self,
+        method: str,
+        url: str,
+        params: Optional[dict[str, str]] = None,  # TODO - params with same name
+        data: Optional[Union[str, dict]] = None,
+        headers: Optional[dict[str, str]] = None,
+        cookies: Optional[dict[str, str]] = None,
+        json: Optional[dict] = None,
+        allow_redirects: Optional[bool] = False,
+        insecure_skip_verify: Optional[bool] = False,
+        timeout_seconds: Optional[int] = 30,
+        proxies: Optional[dict[str, str]] = None
+    ):
+
+        # Add params to url
+
+        # Build request body
+        request_body = json + data  # TODO
+
+        # Formate proxy
+
+        request_payload = {
+            "proxyUrl": "",  # TODO
+            "followRedirects": allow_redirects,
+            "insecureSkipVerify": insecure_skip_verify,
+            "timeoutSeconds": timeout_seconds,
+            "headers": headers,
+            "headerOrder": self.header_order,
+            "requestUrl": url,
+            "requestMethod": method,
+            "requestBody": request_body,
+            "requestCookies": cookies
+        }
+        if self.client_identifier is None:
+            request_payload["customTlsClient"] = {
+                "ja3String": self.ja3_string,
+                "h2Settings": self.h2_settings,
+                "h2SettingsOrder": self.h2_settings_order,
+                "pseudoHeaderOrder": self.pseudo_header_order,
+                "connectionFlow": self.connection_flow,
+                "priorityFrames": self.priority_frames
+            }
+        else:
+            request_payload["tlsClientIdentifier"] = self.client_identifier
+
+        # this is a pointer to the response
+        response = request(json.dumps(request_payload).encode('utf-8'))
+        # we dereference the pointer to a byte array
+        response_bytes = ctypes.string_at(response)
+        # convert our byte array to a string (tls client returns json)
+        response_string = response_bytes.decode('utf-8')
+        # convert response string to json
+        response_object = json.loads(response_string) # TODO convert to response class
+
