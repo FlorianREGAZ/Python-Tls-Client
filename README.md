@@ -34,7 +34,7 @@ res = session.get(
 )
 ```
 
-Example 1 - Custom:
+Example 2 - Custom:
 ```python
 import tls_client
 
