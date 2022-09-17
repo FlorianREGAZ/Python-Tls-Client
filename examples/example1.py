@@ -1,6 +1,6 @@
-import tls_client
+import pytls_client
 
-session = tls_client.Session(
+session = pytls_client.Session(
     client_identifier="chrome_105"
 )
 
