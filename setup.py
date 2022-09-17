@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
 from codecs import open
 import os
 
@@ -19,8 +19,9 @@ setup(
     description=about["__description__"],
     long_description=readme,
     long_description_content_type="text/markdown",
-    packages=find_packages(),
-    package_data={'': ['*.dll']},
+    packages=find_packages(where="tls_client"),
+    package_dir={"": "tls_client"},
+    data_files=[('tls-client', ['dependencies/tls-client.dll'])],
     classifiers=[
         "Environment :: Web Environment",
         "Intended Audience :: Developers",
