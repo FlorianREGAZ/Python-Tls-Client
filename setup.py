@@ -26,9 +26,10 @@ setup(
     long_description=readme,
     long_description_content_type="text/markdown",
     packages=find_packages(),
-    #include_package_data=True,
-    #data_files=[('tls_client/dependencies', ['tls_client/dependencies/tls-client.dll'])],
-    data_files=data_files,
+    include_package_data=True,
+    package_data={
+        '': ['*'],
+    },
     classifiers=[
         "Environment :: Web Environment",
         "Intended Audience :: Developers",
