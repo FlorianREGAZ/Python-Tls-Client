@@ -109,7 +109,25 @@ class Session:
         # 15663105
         self.connection_flow = connection_flow
 
-        # TODO
+        # Example:
+        # [
+        #   {
+        #     "streamID": 3,
+        #     "priorityParam": {
+        #       "weight": 201,
+        #       "streamDep": 0,
+        #       "exclusive": false
+        #     }
+        #   },
+        #   {
+        #     "streamID": 5,
+        #     "priorityParam": {
+        #       "weight": 101,
+        #       "streamDep": false,
+        #       "exclusive": 0
+        #     }
+        #   }
+        # ]
         self.priority_frames = priority_frames
 
         # Order of your headers
