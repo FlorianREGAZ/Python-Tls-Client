@@ -1,7 +1,9 @@
 from .cffi import request
+from .cookies import cookiejar_from_dict, get_cookie_header, merge_cookies
 from .structures import CaseInsensitiveDict
 from .__version__ import __version__
 
+from http.cookiejar import CookieJar
 from typing import Optional, Union
 from json import dumps, loads
 import urllib.parse
@@ -45,7 +47,7 @@ class Session:
         self.params = {}
 
         # CookieJar containing all currently outstanding cookies set on this session
-        # TODO: self.cookies = cookiejar_from_dict({})
+        self.cookies = cookiejar_from_dict({})
 
         # --- Advanced Settings ----------------------------------------------------------------------------------------
 
@@ -168,12 +170,22 @@ class Session:
         elif method not in ["GET", "HEAD"] and request_body is None:
             headers["Content-Length"] = "0"
         # --- Cookies --------------------------------------------------------------------------------------------------
-        # TODO
+        cookies = request.cookies or {}
+        # Merge with session cookies
+        cookies = merge_cookies(self.cookies, cookies)
 
-        # --- Proxy ------ ---------------------------------------------------------------------------------------------
+        cookie_header = get_cookie_header(
+            request_url=url,
+            request_headers=headers,
+            cookie_jar=cookies
+        )
+        if cookie_header is not None:
+            self.headers["Cookie"] = cookie_header
+
+        # --- Proxy ----------------------------------------------------------------------------------------------------
         # TODO Prepare proxy - format proxy correctly
 
-        # --- Request ---- ---------------------------------------------------------------------------------------------
+        # --- Request --------------------------------------------------------------------------------------------------
         request_payload = {
             "proxyUrl": "",  # TODO
             "followRedirects": allow_redirects,
@@ -184,7 +196,7 @@ class Session:
             "requestUrl": url,
             "requestMethod": method,
             "requestBody": request_body,
-            "requestCookies": cookies
+            "requestCookies": []  # Empty because its handled in python
         }
         if self.client_identifier is None:
             request_payload["customTlsClient"] = {
@@ -207,3 +219,4 @@ class Session:
         # convert response string to json
         response_object = loads(response_string)  # TODO convert to response class
 
+        # --- Response -------------------------------------------------------------------------------------------------
