@@ -4,7 +4,7 @@ from .structures import CaseInsensitiveDict
 from .__version__ import __version__
 
 from http.cookiejar import CookieJar
-from typing import Optional, Union
+from typing import Any, Optional, Union
 from json import dumps, loads
 import urllib.parse
 import ctypes
@@ -235,7 +235,7 @@ class Session:
     def get(
         self,
         url: str,
-        **kwargs
+        **kwargs: Any
     ):
         """Sends a GET request"""
         return self.execute_request(method="GET", url=url, **kwargs)
@@ -243,7 +243,7 @@ class Session:
     def options(
         self,
         url: str,
-        **kwargs
+        **kwargs: Any
     ):
         """Sends a OPTIONS request"""
         return self.execute_request(method="OPTIONS", url=url, **kwargs)
@@ -251,7 +251,7 @@ class Session:
     def head(
         self,
         url: str,
-        **kwargs
+        **kwargs: Any
     ):
         """Sends a HEAD request"""
         return self.execute_request(method="HEAD", url=url, **kwargs)
@@ -261,7 +261,7 @@ class Session:
         url: str,
         data: Optional[Union[str, dict]] = None,
         json: Optional[dict] = None,
-        **kwargs
+        **kwargs: Any
     ):
         """Sends a POST request"""
         return self.execute_request(method="POST", url=url, data=data, json=json, **kwargs)
@@ -271,7 +271,7 @@ class Session:
         url: str,
         data: Optional[Union[str, dict]] = None,
         json: Optional[dict] = None,
-        **kwargs
+        **kwargs: Any
     ):
         """Sends a PUT request"""
         return self.execute_request(method="PUT", url=url, data=data, json=json, **kwargs)
@@ -281,7 +281,7 @@ class Session:
         url: str,
         data: Optional[Union[str, dict]] = None,
         json: Optional[dict] = None,
-        **kwargs
+        **kwargs: Any
     ):
         """Sends a PUT request"""
         return self.execute_request(method="PATCH", url=url, data=data, json=json, **kwargs)
@@ -289,7 +289,7 @@ class Session:
     def delete(
         self,
         url: str,
-        **kwargs
+        **kwargs: Any
     ):
         """Sends a DELETE request"""
         return self.execute_request(method="DELETE", url=url, **kwargs)
