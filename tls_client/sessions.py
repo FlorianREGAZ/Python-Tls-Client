@@ -3,7 +3,6 @@ from .cookies import cookiejar_from_dict, get_cookie_header, merge_cookies, extr
 from .structures import CaseInsensitiveDict
 from .__version__ import __version__
 
-from http.cookiejar import CookieJar
 from typing import Any, Optional, Union
 from json import dumps, loads
 import urllib.parse

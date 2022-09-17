@@ -74,10 +74,9 @@ class MockRequest:
 
 
 class MockResponse:
-    """Wraps a `httplib.HTTPMessage` to mimic a `urllib.addinfourl`.
-
-    ...what? Basically, expose the parsed HTTP headers from the server response
-    the way `cookielib` expects to see them.
+    """
+    Wraps a httplib.HTTPMessage to mimic a urllib.addinfourl.
+    The objective is to retrieve the response cookies correctly.
     """
 
     def __init__(self, headers):
