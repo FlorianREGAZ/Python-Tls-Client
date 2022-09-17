@@ -6,7 +6,7 @@
 
 # Disclaimer:
 # Big shout out to Bogdanfinn for open sourcing his tls-client in Golang.
-# Also to requests, as this project is highly inspired!
+# Also to requests, as most of the cookie handling is copied from it. :'D
 # Links:
 # tls-client: https://github.com/bogdanfinn/tls-client
 # requests: https://github.com/psf/requests

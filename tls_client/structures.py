@@ -1,6 +1,5 @@
-from collections import OrderedDict, abc
-Mapping = abc.Mapping
-MutableMapping = abc.MutableMapping
+from typing import MutableMapping, Mapping
+from collections import OrderedDict
 
 
 class CaseInsensitiveDict(MutableMapping):

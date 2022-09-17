@@ -1,4 +1,4 @@
-from .cookies import cookiejar_from_dict
+from .cookies import cookiejar_from_dict, RequestsCookieJar
 from .structures import CaseInsensitiveDict
 
 from http.cookiejar import CookieJar
@@ -33,7 +33,7 @@ class Response:
         return json.loads(self.text, **kwargs)
 
 
-def build_response(res: Union[dict, list], res_cookies: CookieJar) -> Response:
+def build_response(res: Union[dict, list], res_cookies: RequestsCookieJar) -> Response:
     """Builds a Response object """
     response = Response()
     # Add status code
