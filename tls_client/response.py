@@ -36,11 +36,9 @@ class Response:
 def build_response(res: Union[dict, list], res_cookies: CookieJar) -> Response:
     """Builds a Response object """
     response = Response()
-
-    # Fallback to None if there's no status_code, for whatever reason.
+    # Add status code
     response.status_code = res["status"]
-
-    # Make headers case-insensitive.
+    # Add headers
     response_headers = {}
     if res["headers"] is not None:
         for header_key, header_value in res["headers"].items():
@@ -49,7 +47,8 @@ def build_response(res: Union[dict, list], res_cookies: CookieJar) -> Response:
             else:
                 response_headers[header_key] = header_value
     response.headers = response_headers
-
-    # Add new cookies from the server.
+    # Add cookies
     response.cookies = res_cookies
+    # Add response body
+    response.text = res["body"]
     return response

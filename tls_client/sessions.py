@@ -220,7 +220,7 @@ class Session:
         # convert our byte array to a string (tls client returns json)
         response_string = response_bytes.decode('utf-8')
         # convert response string to json
-        response_object = loads(response_string)  # TODO convert to response class
+        response_object = loads(response_string)
 
         # --- Response -------------------------------------------------------------------------------------------------
         # Set response cookies
@@ -230,6 +230,7 @@ class Session:
             cookie_jar=cookies,
             response_headers=response_object["headers"]
         )
+        # build response class
         return build_response(response_object, response_cookie_jar)
 
     def get(
