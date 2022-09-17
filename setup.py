@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-import os
+from setuptools import setup, find_packages
 from codecs import open
-from setuptools import setup
+import os
 
 
 about = {}
@@ -19,6 +19,7 @@ setup(
     description=about["__description__"],
     long_description=readme,
     long_description_content_type="text/markdown",
+    packages=find_packages(),
     package_data={'': ['*.dll']},
     classifiers=[
         "Development Status :: 5 - Planning",
