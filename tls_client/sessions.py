@@ -1,5 +1,6 @@
 from .cffi import request
 from .cookies import cookiejar_from_dict, get_cookie_header, merge_cookies, extract_cookies_to_jar
+from .response import build_response
 from .structures import CaseInsensitiveDict
 from .__version__ import __version__
 
@@ -223,13 +224,13 @@ class Session:
 
         # --- Response -------------------------------------------------------------------------------------------------
         # Set response cookies
-        extract_cookies_to_jar(
+        response_cookie_jar = extract_cookies_to_jar(
             request_url=url,
             request_headers=headers,
             cookie_jar=cookies,
             response_headers=response_object["headers"]
         )
-        print(response_object)
+        return build_response(response_object, response_cookie_jar)
 
     def get(
         self,

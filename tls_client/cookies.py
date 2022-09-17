@@ -3,6 +3,7 @@ from .structures import CaseInsensitiveDict
 from http.cookiejar import CookieJar, Cookie
 from urllib.parse import urlparse, urlunparse
 from http.client import HTTPMessage
+from typing import Union
 
 
 class MockRequest:
@@ -118,9 +119,10 @@ def cookiejar_from_dict(cookie_dict: dict) -> CookieJar:
     return cookie_jar
 
 
-def merge_cookies(cookiejar: CookieJar, cookies: dict) -> CookieJar:
+def merge_cookies(cookiejar: CookieJar, cookies: Union[dict, CookieJar]) -> CookieJar:
     """Merge cookies in session and cookies provided in request"""
-    cookies = cookiejar_from_dict(cookies)
+    if type(cookies) is dict:
+        cookies = cookiejar_from_dict(cookies)
 
     for cookie in cookies:
         cookiejar.set_cookie(cookie)
@@ -139,7 +141,9 @@ def extract_cookies_to_jar(
         request_headers: CaseInsensitiveDict,
         cookie_jar: CookieJar,
         response_headers: dict
-    ) -> None:
+    ) -> CookieJar:
+    response_cookie_jar = cookiejar_from_dict({})
+
     req = MockRequest(request_url, request_headers)
     # mimic HTTPMessage
     http_message = HTTPMessage()
@@ -150,4 +154,7 @@ def extract_cookies_to_jar(
                 (header_name, header_value)
             )
     res = MockResponse(http_message)
-    cookie_jar.extract_cookies(res, req)
+    response_cookie_jar.extract_cookies(res, req)
+
+    merge_cookies(cookie_jar, response_cookie_jar)
+    return response_cookie_jar
