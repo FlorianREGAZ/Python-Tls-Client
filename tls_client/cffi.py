@@ -1,9 +1,10 @@
+from sys import platform
 import ctypes
-import sys
 import os
 
-rootdir = os.path.dirname(os.path.abspath(sys.argv[0]))
-library = ctypes.cdll.LoadLibrary('D:/PycharmProjects/TLS-Client/tls_client/dependencies/tls-client-windows-64-0.5.2.dll')
+rootdir = os.path.abspath(os.path.dirname(__file__))
+dll_ext = 'dylib' if platform == 'darwin' else 'dll' if platform in ('win32', 'cygwin') else 'so'
+library = ctypes.cdll.LoadLibrary(f'{rootdir}/dependencies/tls-client.{dll_ext}')
 
 # extract the exposed request function from the shared package
 request = library.request
