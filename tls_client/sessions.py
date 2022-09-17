@@ -1,5 +1,5 @@
 from .cffi import request
-from .cookies import cookiejar_from_dict, get_cookie_header, merge_cookies
+from .cookies import cookiejar_from_dict, get_cookie_header, merge_cookies, extract_cookies_to_jar
 from .structures import CaseInsensitiveDict
 from .__version__ import __version__
 
@@ -23,6 +23,9 @@ class Session:
         priority_frames: Optional[str] = None,
         header_order: Optional[list[str]] = None,
     ) -> None:
+        # TODO --> Custom path option for dll etc.
+        # TODO --> Error handling FileNotFoundError: Could not find module 'D:\PycharmProjects\TLS-Client\examples\dependencies\tls_client-windows-64-0.5.2.dll' (or one of its dependencies). Try using the full path with constructor syntax.
+
         # --- Standard Settings ----------------------------------------------------------------------------------------
 
         # Case-insensitive dictionary of headers, send on each request
@@ -144,7 +147,7 @@ class Session:
                 json = dumps(json)
             request_body = json
             content_type = "application/json"
-        elif type(data) not in [str, bytes]:
+        elif data is not None and type(data) not in [str, bytes]:
             request_body = urllib.parse.urlencode(data, doseq=True)
             content_type = "application/x-www-form-urlencoded"
         else:
@@ -170,7 +173,7 @@ class Session:
         elif method not in ["GET", "HEAD"] and request_body is None:
             headers["Content-Length"] = "0"
         # --- Cookies --------------------------------------------------------------------------------------------------
-        cookies = request.cookies or {}
+        cookies = cookies or {}
         # Merge with session cookies
         cookies = merge_cookies(self.cookies, cookies)
 
@@ -191,7 +194,7 @@ class Session:
             "followRedirects": allow_redirects,
             "insecureSkipVerify": insecure_skip_verify,
             "timeoutSeconds": timeout_seconds,
-            "headers": headers,
+            "headers": dict(headers),
             "headerOrder": self.header_order,
             "requestUrl": url,
             "requestMethod": method,
@@ -220,7 +223,14 @@ class Session:
         response_object = loads(response_string)  # TODO convert to response class
 
         # --- Response -------------------------------------------------------------------------------------------------
-        # TODO
+        # Set response cookies
+        extract_cookies_to_jar(
+            request_url=url,
+            request_headers=headers,
+            cookie_jar=cookies,
+            response_headers=response_object["headers"]
+        )
+        print(response_object)
 
     def get(
         self,

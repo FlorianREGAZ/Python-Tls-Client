@@ -139,13 +139,16 @@ def extract_cookies_to_jar(
         request_url: str,
         request_headers: CaseInsensitiveDict,
         cookie_jar: CookieJar,
-        response_cookies: dict
+        response_headers: dict
     ) -> None:
     req = MockRequest(request_url, request_headers)
     # mimic HTTPMessage
     http_message = HTTPMessage()
-    http_message._headers = [
-        ('Set-Cookie','prov=c119126a-b232-...')  # TODO
-    ]
-    res = MockResponse(response._original_response.msg)
+    http_message._headers = []
+    for header_name, header_values in response_headers.items():
+        for header_value in header_values:
+            http_message._headers.append(
+                (header_name, header_value)
+            )
+    res = MockResponse(http_message)
     cookie_jar.extract_cookies(res, req)

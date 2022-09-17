@@ -1,7 +1,7 @@
 import ctypes
 
 # TODO: load the tls_client shared package for your OS
-library = ctypes.cdll.LoadLibrary('./dependencies/tls_client-windows-64-0.5.2.dll')
+library = ctypes.cdll.LoadLibrary('D:/PycharmProjects/TLS-Client/tls_client/dependencies/tls-client-windows-64-0.5.2.dll')
 
 # extract the exposed request function from the shared package
 request = library.request
