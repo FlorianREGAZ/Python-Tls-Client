@@ -22,7 +22,7 @@ setup(
     packages=find_packages(),
     package_data={'': ['*.dll']},
     classifiers=[
-        "Development Status :: 5 - Planning",
+        "Development Status :: 1 - Planning",
         "Environment :: Web Environment",
         "Intended Audience :: Developers",
         "Natural Language :: English",
