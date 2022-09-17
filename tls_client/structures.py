@@ -4,7 +4,9 @@ MutableMapping = abc.MutableMapping
 
 
 class CaseInsensitiveDict(MutableMapping):
-    """A case-insensitive ``dict``-like object.
+    """Origin: requests library (https://github.com/psf/requests)
+
+    A case-insensitive ``dict``-like object.
 
     Implements all methods and operations of
     ``MutableMapping`` as well as dict's ``copy``. Also
