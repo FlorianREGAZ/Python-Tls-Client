@@ -129,12 +129,13 @@ class Session:
         proxies: Optional[dict[str, str]] = None
     ):
 
-        # Add params to url
+        # Prepare URL - add params to url
 
-        # Build request body
+        # Prepare request body - build request body
+        # Data has priority. JSON ist only used if data is None.
         request_body = json + data  # TODO
 
-        # Formate proxy
+        # Prepare proxy - format proxy correctly
 
         request_payload = {
             "proxyUrl": "",  # TODO
@@ -167,5 +168,5 @@ class Session:
         # convert our byte array to a string (tls client returns json)
         response_string = response_bytes.decode('utf-8')
         # convert response string to json
-        response_object = json.loads(response_string) # TODO convert to response class
+        response_object = json.loads(response_string)  # TODO convert to response class
 
