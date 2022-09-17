@@ -24,9 +24,6 @@ class Session:
         priority_frames: Optional[str] = None,
         header_order: Optional[list[str]] = None,
     ) -> None:
-        # TODO --> Custom path option for dll etc.
-        # TODO --> Error handling FileNotFoundError: Could not find module 'D:\PycharmProjects\TLS-Client\examples\dependencies\tls_client-windows-64-0.5.2.dll' (or one of its dependencies). Try using the full path with constructor syntax.
-
         # --- Standard Settings ----------------------------------------------------------------------------------------
 
         # Case-insensitive dictionary of headers, send on each request
@@ -187,11 +184,16 @@ class Session:
             self.headers["Cookie"] = cookie_header
 
         # --- Proxy ----------------------------------------------------------------------------------------------------
-        # TODO Prepare proxy - format proxy correctly
+        if type(proxies) is dict and "http" in proxies:
+            proxy = proxies["http"]
+        elif type(proxies) is str:
+            proxy = proxies
+        else:
+            proxy = ""
 
         # --- Request --------------------------------------------------------------------------------------------------
         request_payload = {
-            "proxyUrl": "",  # TODO
+            "proxyUrl": proxy,
             "followRedirects": allow_redirects,
             "insecureSkipVerify": insecure_skip_verify,
             "timeoutSeconds": timeout_seconds,
