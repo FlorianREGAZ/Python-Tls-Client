@@ -1,8 +1,14 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages, Extension
 from codecs import open
+import glob
 import os
 
+data_files = []
+directories = glob.glob('tls_client/dependencies/')
+for directory in directories:
+    files = glob.glob(directory+'*')
+    data_files.append(('tls_client/dependencies', files))
 
 about = {}
 here = os.path.abspath(os.path.dirname(__file__))
@@ -19,9 +25,10 @@ setup(
     description=about["__description__"],
     long_description=readme,
     long_description_content_type="text/markdown",
-    packages=find_packages(where="tls_client"),
-    package_dir={"": "tls_client"},
-    data_files=[('tls-client', ['dependencies/tls-client.dll'])],
+    packages=find_packages(),
+    #include_package_data=True,
+    #data_files=[('tls_client/dependencies', ['tls_client/dependencies/tls-client.dll'])],
+    data_files=data_files,
     classifiers=[
         "Environment :: Web Environment",
         "Intended Audience :: Developers",

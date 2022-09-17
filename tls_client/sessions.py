@@ -9,6 +9,7 @@ from typing import Any, Optional, Union
 from json import dumps, loads
 import urllib.parse
 import ctypes
+import uuid
 
 
 class Session:
@@ -24,6 +25,7 @@ class Session:
         priority_frames: Optional[str] = None,
         header_order: Optional[list[str]] = None,
     ) -> None:
+        self._session_id = str(uuid.uuid4())
         # --- Standard Settings ----------------------------------------------------------------------------------------
 
         # Case-insensitive dictionary of headers, send on each request
@@ -193,6 +195,7 @@ class Session:
 
         # --- Request --------------------------------------------------------------------------------------------------
         request_payload = {
+            "sessionId": self._session_id,
             "proxyUrl": proxy,
             "followRedirects": allow_redirects,
             "insecureSkipVerify": insecure_skip_verify,

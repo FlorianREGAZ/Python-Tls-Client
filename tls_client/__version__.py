@@ -6,5 +6,5 @@
 
 __title__ = "tls_client"
 __description__ = "Advanced Python HTTP Client."
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 __author__ = "Florian Zager"
