@@ -130,7 +130,7 @@ class Session:
         allow_redirects: Optional[bool] = False,
         insecure_skip_verify: Optional[bool] = False,
         timeout_seconds: Optional[int] = 30,
-        proxies: Optional[dict[str, str]] = None
+        proxy: Optional[dict[str, str]] = None
     ):
         # --- URL ------------------------------------------------------------------------------------------------------
         # Prepare URL - add params to url
@@ -184,10 +184,10 @@ class Session:
             self.headers["Cookie"] = cookie_header
 
         # --- Proxy ----------------------------------------------------------------------------------------------------
-        if type(proxies) is dict and "http" in proxies:
-            proxy = proxies["http"]
-        elif type(proxies) is str:
-            proxy = proxies
+        if type(proxy) is dict and "http" in proxy:
+            proxy = proxy["http"]
+        elif type(proxy) is str:
+            proxy = proxy
         else:
             proxy = ""
 
