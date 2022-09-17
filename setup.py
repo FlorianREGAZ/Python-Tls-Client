@@ -6,7 +6,7 @@ from setuptools import setup
 
 about = {}
 here = os.path.abspath(os.path.dirname(__file__))
-with open(os.path.join(here, "pytls_client", "__version__.py"), "r", "utf-8") as f:
+with open(os.path.join(here, "tls_client", "__version__.py"), "r", "utf-8") as f:
     exec(f.read(), about)
 
 with open("README.md", "r", "utf-8") as f:
@@ -19,6 +19,7 @@ setup(
     description=about["__description__"],
     long_description=readme,
     long_description_content_type="text/markdown",
+    package_data={'': ['*.dll']},
     classifiers=[
         "Development Status :: 5 - Planning",
         "Environment :: Web Environment",
