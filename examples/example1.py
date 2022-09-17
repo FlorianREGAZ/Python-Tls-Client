@@ -5,7 +5,7 @@ session = tls_client.Session(
 )
 
 res = session.get(
-    "https://github.com/psf/requests"
+    "https://www.google.com/"
 )
 print(res)
 
