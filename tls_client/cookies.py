@@ -2,6 +2,7 @@ from .structures import CaseInsensitiveDict
 
 from http.cookiejar import CookieJar, Cookie
 from urllib.parse import urlparse, urlunparse
+from http.client import HTTPMessage
 
 
 class MockRequest:
@@ -53,12 +54,6 @@ class MockRequest:
     def get_header(self, name, default=None):
         return self.request_headers.get(name, self._new_headers.get(name, default))
 
-    def add_header(self, key, val):
-        """cookielib has no legitimate use for this method; add it back if you find one."""
-        raise NotImplementedError(
-            "Cookie headers should be added with add_unredirected_header()"
-        )
-
     def add_unredirected_header(self, name, value):
         self._new_headers[name] = value
 
@@ -86,10 +81,6 @@ class MockResponse:
     """
 
     def __init__(self, headers):
-        """Make a MockResponse for `cookielib` to read.
-
-        :param headers: a httplib.HTTPMessage or analogous carrying the headers
-        """
         self._headers = headers
 
     def info(self):
@@ -142,3 +133,19 @@ def get_cookie_header(request_url: str, request_headers: CaseInsensitiveDict, co
     r = MockRequest(request_url, request_headers)
     cookie_jar.add_cookie_header(r)
     return r.get_new_headers().get("Cookie")
+
+
+def extract_cookies_to_jar(
+        request_url: str,
+        request_headers: CaseInsensitiveDict,
+        cookie_jar: CookieJar,
+        response_cookies: dict
+    ) -> None:
+    req = MockRequest(request_url, request_headers)
+    # mimic HTTPMessage
+    http_message = HTTPMessage()
+    http_message._headers = [
+        ('Set-Cookie','prov=c119126a-b232-...')  # TODO
+    ]
+    res = MockResponse(response._original_response.msg)
+    cookie_jar.extract_cookies(res, req)

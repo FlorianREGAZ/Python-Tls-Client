@@ -220,3 +220,66 @@ class Session:
         response_object = loads(response_string)  # TODO convert to response class
 
         # --- Response -------------------------------------------------------------------------------------------------
+        # TODO
+
+    def get(
+        self,
+        url: str,
+        **kwargs
+    ):
+        """Sends a GET request"""
+        return self.execute_request(method="GET", url=url, **kwargs)
+
+    def options(
+        self,
+        url: str,
+        **kwargs
+    ):
+        """Sends a OPTIONS request"""
+        return self.execute_request(method="OPTIONS", url=url, **kwargs)
+
+    def head(
+        self,
+        url: str,
+        **kwargs
+    ):
+        """Sends a HEAD request"""
+        return self.execute_request(method="HEAD", url=url, **kwargs)
+
+    def post(
+        self,
+        url: str,
+        data: Optional[Union[str, dict]] = None,
+        json: Optional[dict] = None,
+        **kwargs
+    ):
+        """Sends a POST request"""
+        return self.execute_request(method="POST", url=url, data=data, json=json, **kwargs)
+
+    def put(
+        self,
+        url: str,
+        data: Optional[Union[str, dict]] = None,
+        json: Optional[dict] = None,
+        **kwargs
+    ):
+        """Sends a PUT request"""
+        return self.execute_request(method="PUT", url=url, data=data, json=json, **kwargs)
+
+    def patch(
+        self,
+        url: str,
+        data: Optional[Union[str, dict]] = None,
+        json: Optional[dict] = None,
+        **kwargs
+    ):
+        """Sends a PUT request"""
+        return self.execute_request(method="PATCH", url=url, data=data, json=json, **kwargs)
+
+    def delete(
+        self,
+        url: str,
+        **kwargs
+    ):
+        """Sends a DELETE request"""
+        return self.execute_request(method="DELETE", url=url, **kwargs)
