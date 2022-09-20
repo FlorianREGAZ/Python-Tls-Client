@@ -18,12 +18,12 @@ class Session:
         self,
         client_identifier: Optional[str] = None,
         ja3_string: Optional[str] = None,
-        h2_settings: Optional[dict[int, int]] = None,
-        h2_settings_order: Optional[list[int]] = None,
-        pseudo_header_order: Optional[list[str]] = None,
+        h2_settings: Optional[dict] = None,  # Optional[dict[int, int]]
+        h2_settings_order: Optional[list] = None, # Optional[list[int]]
+        pseudo_header_order: Optional[list] = None,  # Optional[list[str]
         connection_flow: Optional[int] = None,
         priority_frames: Optional[str] = None,
-        header_order: Optional[list[str]] = None,
+        header_order: Optional[list] = None,  # Optional[list[str]]
     ) -> None:
         self._session_id = str(uuid.uuid4())
         # --- Standard Settings ----------------------------------------------------------------------------------------
@@ -142,15 +142,15 @@ class Session:
         self,
         method: str,
         url: str,
-        params: Optional[dict[str, str]] = None,
+        params: Optional[dict] = None,  # Optional[dict[str, str]]
         data: Optional[Union[str, dict]] = None,
-        headers: Optional[dict[str, str]] = None,
-        cookies: Optional[dict[str, str]] = None,
-        json: Optional[dict] = None,
+        headers: Optional[dict] = None,  # Optional[dict[str, str]]
+        cookies: Optional[dict] = None,  # Optional[dict[str, str]]
+        json: Optional[dict] = None,  # Optional[dict]
         allow_redirects: Optional[bool] = False,
         insecure_skip_verify: Optional[bool] = False,
         timeout_seconds: Optional[int] = 30,
-        proxy: Optional[dict[str, str]] = None
+        proxy: Optional[dict] = None  # Optional[dict[str, str]]
     ):
         # --- URL ------------------------------------------------------------------------------------------------------
         # Prepare URL - add params to url
