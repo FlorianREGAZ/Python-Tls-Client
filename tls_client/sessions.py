@@ -185,11 +185,6 @@ class Session:
         else:
             headers = self.headers
 
-        # set content length header
-        if method not in ["GET", "HEAD"] and request_body is not None:
-            headers["Content-Length"] = str(len(request_body))
-        elif method not in ["GET", "HEAD"] and request_body is None:
-            headers["Content-Length"] = "0"
         # --- Cookies --------------------------------------------------------------------------------------------------
         cookies = cookies or {}
         # Merge with session cookies
