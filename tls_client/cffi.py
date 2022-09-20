@@ -1,10 +1,18 @@
 from sys import platform
+from platform import machine
 import ctypes
 import os
 
+
+if platform == 'darwin':
+    file_ext = '-arm64.dylib' if machine() == "arm64" else '-x86.dylib'
+elif platform in ('win32', 'cygwin'):
+    file_ext = '.dll'
+else:
+    file_ext = '.so'
+
 rootdir = os.path.abspath(os.path.dirname(__file__))
-dll_ext = 'dylib' if platform == 'darwin' else 'dll' if platform in ('win32', 'cygwin') else 'so'
-library = ctypes.cdll.LoadLibrary(f'{rootdir}/dependencies/tls-client.{dll_ext}')
+library = ctypes.cdll.LoadLibrary(f'{rootdir}/dependencies/tls-client{file_ext}')
 
 # extract the exposed request function from the shared package
 request = library.request
