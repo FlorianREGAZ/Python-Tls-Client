@@ -73,6 +73,29 @@ res = session.post(
 )
 ```
 
+# Pyinstaller / Pyarmor
+**If you want to package the module with Pyinstaller or Pyarmor, make sure to add this to your command:**
+
+Linux:
+```
+--add-binary '{path_to_library}/tls_client/dependencies/tls-client.so:tls_client/dependencies'
+```
+
+MacOS M1 and older:
+```
+--add-binary '{path_to_library}/tls_client/dependencies/tls-client-x86.dylib:tls_client/dependencies'
+```
+
+MacOS M2:
+```
+--add-binary '{path_to_library}/tls_client/dependencies/tls-client-arm64.dylib:tls_client/dependencies'
+```
+
+Windows:
+```
+--add-binary '{path_to_library}/tls_client/dependencies/tls-client.dll;tls_client/dependencies'
+```
+
 # Acknowledgements
 Big shout out to [Bogdanfinn](https://github.com/bogdanfinn) for open sourcing his [tls-client](https://github.com/bogdanfinn/tls-client) in Golang.
 Also to [requests](https://github.com/psf/requests), as most of the cookie handling is copied from it. :'D
