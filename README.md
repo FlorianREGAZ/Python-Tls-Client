@@ -74,7 +74,7 @@ res = session.post(
 ```
 
 # Pyinstaller / Pyarmor
-**If you want to package the module with Pyinstaller or Pyarmor, make sure to add this to your command:**
+**If you want to pack the library with Pyinstaller or Pyarmor, make sure to add this to your command:**
 
 Linux:
 ```
