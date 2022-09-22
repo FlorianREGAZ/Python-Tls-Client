@@ -22,7 +22,7 @@ class Session:
         h2_settings_order: Optional[list] = None, # Optional[list[int]]
         pseudo_header_order: Optional[list] = None,  # Optional[list[str]
         connection_flow: Optional[int] = None,
-        priority_frames: Optional[str] = None,
+        priority_frames: Optional[list] = None,
         header_order: Optional[list] = None,  # Optional[list[str]]
     ) -> None:
         self._session_id = str(uuid.uuid4())
