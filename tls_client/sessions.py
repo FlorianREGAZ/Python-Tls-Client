@@ -199,6 +199,8 @@ class Session:
             self.headers["Cookie"] = cookie_header
 
         # --- Proxy ----------------------------------------------------------------------------------------------------
+        proxy = proxy or self.proxies
+        
         if type(proxy) is dict and "http" in proxy:
             proxy = proxy["http"]
         elif type(proxy) is str:
