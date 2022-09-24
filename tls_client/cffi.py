@@ -9,10 +9,10 @@ if platform == 'darwin':
 elif platform in ('win32', 'cygwin'):
     file_ext = '.dll'
 else:
-    file_ext = '.so'
+    file_ext = '-x86.so' if "x86" in machine() else '-amd64.so'
 
-rootdir = os.path.abspath(os.path.dirname(__file__))
-library = ctypes.cdll.LoadLibrary(f'{rootdir}/dependencies/tls-client{file_ext}')
+root_dir = os.path.abspath(os.path.dirname(__file__))
+library = ctypes.cdll.LoadLibrary(f'{root_dir}/dependencies/tls-client{file_ext}')
 
 # extract the exposed request function from the shared package
 request = library.request
