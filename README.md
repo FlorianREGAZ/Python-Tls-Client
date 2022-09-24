@@ -76,9 +76,14 @@ res = session.post(
 # Pyinstaller / Pyarmor
 **If you want to pack the library with Pyinstaller or Pyarmor, make sure to add this to your command:**
 
-Linux:
+Linux - Ubuntu / x86:
 ```
---add-binary '{path_to_library}/tls_client/dependencies/tls-client.so:tls_client/dependencies'
+--add-binary '{path_to_library}/tls_client/dependencies/tls-client-x86.so:tls_client/dependencies'
+```
+
+Linux Alpine / AMD64:
+```
+--add-binary '{path_to_library}/tls_client/dependencies/tls-client-amd64.so:tls_client/dependencies'
 ```
 
 MacOS M1 and older:
