@@ -10,6 +10,10 @@ class Response:
     """object, which contains the response to an HTTP request."""
 
     def __init__(self):
+
+        # Reference of URL the response is coming from (especially useful with redirects)
+        self.url = None
+
         # Integer Code of responded HTTP Status, e.g. 404 or 200.
         self.status_code = None
 
@@ -36,6 +40,8 @@ class Response:
 def build_response(res: Union[dict, list], res_cookies: RequestsCookieJar) -> Response:
     """Builds a Response object """
     response = Response()
+    # Add target / url
+    response.url = res["target"]
     # Add status code
     response.status_code = res["status"]
     # Add headers

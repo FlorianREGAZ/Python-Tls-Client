@@ -18,8 +18,12 @@ class Session:
         self,
         client_identifier: Optional[str] = None,
         ja3_string: Optional[str] = None,
-        h2_settings: Optional[dict] = None,  # Optional[dict[int, int]]
-        h2_settings_order: Optional[list] = None, # Optional[list[int]]
+        h2_settings: Optional[dict] = None,  # Optional[dict[str, int]]
+        h2_settings_order: Optional[list] = None,  # Optional[list[str]]
+        supported_signature_algorithms: Optional[list] = None,  # Optional[list[str]]
+        supported_versions: Optional[list] = None,  # Optional[list[str]]
+        key_share_curves: Optional[list] = None,  # Optional[list[str]]
+        cert_compression_algo: str = None,
         pseudo_header_order: Optional[list] = None,  # Optional[list[str]
         connection_flow: Optional[int] = None,
         priority_frames: Optional[list] = None,
@@ -55,7 +59,7 @@ class Session:
         # --- Advanced Settings ----------------------------------------------------------------------------------------
 
         # Examples:
-        # Chrome --> chrome_103, chrome_104, chrome_105
+        # Chrome --> chrome_103, chrome_104, chrome_105, chrome_106
         # Firefox --> firefox_102, firefox_104
         # Opera --> opera_89, opera_90
         # Safari --> safari_15_3, safari_15_6_1, safari_16_0
@@ -69,30 +73,94 @@ class Session:
         self.ja3_string = ja3_string
 
         # HTTP2 Header Frame Settings
+        # Possible Settings:
+        # HEADER_TABLE_SIZE
+        # SETTINGS_ENABLE_PUSH
+        # MAX_CONCURRENT_STREAMS
+        # INITIAL_WINDOW_SIZE
+        # MAX_FRAME_SIZE
+        # MAX_HEADER_LIST_SIZE
+        #
         # Example:
         # {
-        #   1: 65536,
-        #   3: 1000,
-        #   4: 6291456,
-        #   6: 262144
+        #     "HEADER_TABLE_SIZE": 65536,
+        #     "MAX_CONCURRENT_STREAMS": 1000,
+        #     "INITIAL_WINDOW_SIZE": 6291456,
+        #     "MAX_HEADER_LIST_SIZE": 262144
         # }
-        # 1 = HEADER_TABLE_SIZE
-        # 2 = SETTINGS_ENABLE_PUSH
-        # 3 = MAX_CONCURRENT_STREAMS
-        # 4 = INITIAL_WINDOW_SIZE
-        # 5 = MAX_FRAME_SIZE
-        # 6 = MAX_HEADER_LIST_SIZE
         self.h2_settings = h2_settings
 
         # HTTP2 Header Frame Settings Order
         # Example:
         # [
-        #     1,
-        #     3,
-        #     4,
-        #     6
+        #     "HEADER_TABLE_SIZE",
+        #     "MAX_CONCURRENT_STREAMS",
+        #     "INITIAL_WINDOW_SIZE",
+        #     "MAX_HEADER_LIST_SIZE"
         # ]
         self.h2_settings_order = h2_settings_order
+
+        # Supported Signature Algorithms
+        # Possible Settings:
+        # PKCS1WithSHA256
+        # PKCS1WithSHA384
+        # PKCS1WithSHA512
+        # PSSWithSHA256
+        # PSSWithSHA384
+        # PSSWithSHA512
+        # ECDSAWithP256AndSHA256
+        # ECDSAWithP384AndSHA384
+        # ECDSAWithP521AndSHA512
+        # PKCS1WithSHA1
+        # ECDSAWithSHA1
+        #
+        # Example:
+        # [
+        #     "ECDSAWithP256AndSHA256",
+        #     "PSSWithSHA256",
+        #     "PKCS1WithSHA256",
+        #     "ECDSAWithP384AndSHA384",
+        #     "PSSWithSHA384",
+        #     "PKCS1WithSHA384",
+        #     "PSSWithSHA512",
+        #     "PKCS1WithSHA512",
+        # ]
+        self.supported_signature_algorithms = supported_signature_algorithms
+
+        # Supported Versions
+        # Possible Settings:
+        # GREASE
+        # 1.3
+        # 1.2
+        # 1.1
+        # 1.0
+        #
+        # Example:
+        # [
+        #     "GREASE",
+        #     "1.3",
+        #     "1.2"
+        # ]
+        self.supported_versions = supported_versions
+
+        # Key Share Curves
+        # Possible Settings:
+        # GREASE
+        # P256
+        # P384
+        # P521
+        # X25519
+        #
+        # Example:
+        # [
+        #     "GREASE",
+        #     "X25519"
+        # ]
+        self.key_share_curves = key_share_curves
+
+        # Cert Compression Algorithm
+        # Examples: "zlib", "brotli", "zstd"
+        self.cert_compression_algo = cert_compression_algo
 
         # Pseudo Header Order (:authority, :method, :path, :scheme)
         # Example:
@@ -220,7 +288,7 @@ class Session:
             "requestUrl": url,
             "requestMethod": method,
             "requestBody": request_body,
-            "requestCookies": []  # Empty because its handled in python
+            "requestCookies": []  # Empty because it's handled in python
         }
         if self.client_identifier is None:
             request_payload["customTlsClient"] = {
