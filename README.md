@@ -7,7 +7,7 @@ pip install tls-client
 ```
 
 # Examples
-The syntax is insprired from [requests](https://github.com/psf/requests), so its very similar and their are only very few things that are different.
+The syntax is inspired by [requests](https://github.com/psf/requests), so its very similar and there are only very few things that are different.
 
 Example 1 - Preset:
 ```python
