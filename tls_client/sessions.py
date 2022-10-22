@@ -297,7 +297,11 @@ class Session:
                 "h2SettingsOrder": self.h2_settings_order,
                 "pseudoHeaderOrder": self.pseudo_header_order,
                 "connectionFlow": self.connection_flow,
-                "priorityFrames": self.priority_frames
+                "priorityFrames": self.priority_frames,
+                "certCompressionAlgo": self.cert_compression_algo,
+                "supportedVersions": self.supported_versions,
+                "supportedSignatureAlgorithms": self.supported_signature_algorithms,
+                "keyShareCurves": self.key_share_curves,
             }
         else:
             request_payload["tlsClientIdentifier"] = self.client_identifier
