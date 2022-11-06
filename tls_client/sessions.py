@@ -264,7 +264,7 @@ class Session:
             cookie_jar=cookies
         )
         if cookie_header is not None:
-            self.headers["Cookie"] = cookie_header
+            headers["Cookie"] = cookie_header
 
         # --- Proxy ----------------------------------------------------------------------------------------------------
         proxy = proxy or self.proxies
