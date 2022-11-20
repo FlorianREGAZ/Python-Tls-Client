@@ -9,7 +9,8 @@ import tls_client
 # iPadOS --> safari_ios_15_6
 
 session = tls_client.Session(
-    client_identifier="chrome_105"
+    client_identifier="chrome_107",
+    random_tls_extension_order=True
 )
 
 res = session.get(
