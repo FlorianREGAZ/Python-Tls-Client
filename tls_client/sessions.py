@@ -28,6 +28,7 @@ class Session:
         connection_flow: Optional[int] = None,
         priority_frames: Optional[list] = None,
         header_order: Optional[list] = None,  # Optional[list[str]]
+        random_tls_extension_order: Optional = False
     ) -> None:
         self._session_id = str(uuid.uuid4())
         # --- Standard Settings ----------------------------------------------------------------------------------------
@@ -206,6 +207,9 @@ class Session:
         # ]
         self.header_order = header_order
 
+        # randomize tls extension order
+        self.random_tls_extension_order = random_tls_extension_order
+
     def execute_request(
         self,
         method: str,
@@ -305,6 +309,7 @@ class Session:
             }
         else:
             request_payload["tlsClientIdentifier"] = self.client_identifier
+            request_payload["withRandomTLSExtensionOrder"] = self.random_tls_extension_order
 
         # this is a pointer to the response
         response = request(dumps(request_payload).encode('utf-8'))
