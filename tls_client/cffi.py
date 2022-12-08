@@ -8,6 +8,8 @@ if platform == 'darwin':
     file_ext = '-arm64.dylib' if machine() == "arm64" else '-x86.dylib'
 elif platform in ('win32', 'cygwin'):
     file_ext = '.dll'
+elif platform == "linux" and machine() == 'armv7l':
+    file_ext = '-arm32.so'
 else:
     file_ext = '-x86.so' if "x86" in machine() else '-amd64.so'
 
