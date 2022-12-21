@@ -14,7 +14,7 @@ Example 1 - Preset:
 import tls_client
 
 # You can also use the following as `client_identifier`:
-# Chrome --> chrome_103, chrome_104, chrome_105, chrome_106, chrome_107
+# Chrome --> chrome_103, chrome_104, chrome_105, chrome_106, chrome_107, chrome_108
 # Firefox --> firefox_102, firefox_104
 # Opera --> opera_89, opera_90
 # Safari --> safari_15_3, safari_15_6_1, safari_16_0

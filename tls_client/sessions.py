@@ -28,7 +28,10 @@ class Session:
         connection_flow: Optional[int] = None,
         priority_frames: Optional[list] = None,
         header_order: Optional[list] = None,  # Optional[list[str]]
-        random_tls_extension_order: Optional = False
+        header_priority: Optional[dict] = None,  # Optional[list[str]]
+        random_tls_extension_order: Optional = False,
+        force_http1: Optional = False,
+        is_byte_request: Optional = False
     ) -> None:
         self._session_id = str(uuid.uuid4())
         # --- Standard Settings ----------------------------------------------------------------------------------------
@@ -207,8 +210,23 @@ class Session:
         # ]
         self.header_order = header_order
 
+        # Header Priority
+        # Example:
+        # {
+        #   "streamDep": 1,
+        #   "exclusive": true,
+        #   "weight": 1
+        # }
+        self.header_priority = header_priority
+
         # randomize tls extension order
         self.random_tls_extension_order = random_tls_extension_order
+
+        # force HTTP1
+        self.force_http1 = force_http1
+
+        # true - to be able to provide a base64 encoded request body which is an array of bytes
+        self.is_byte_request = is_byte_request
 
     def execute_request(
         self,
@@ -283,16 +301,18 @@ class Session:
         # --- Request --------------------------------------------------------------------------------------------------
         request_payload = {
             "sessionId": self._session_id,
-            "proxyUrl": proxy,
             "followRedirects": allow_redirects,
-            "insecureSkipVerify": insecure_skip_verify,
-            "timeoutSeconds": timeout_seconds,
+            "forceHttp1": self.force_http1,
             "headers": dict(headers),
             "headerOrder": self.header_order,
+            "insecureSkipVerify": insecure_skip_verify,
+            "isByteRequest": self.is_byte_request,
+            "proxyUrl": proxy,
             "requestUrl": url,
             "requestMethod": method,
             "requestBody": request_body,
-            "requestCookies": []  # Empty because it's handled in python
+            "requestCookies": [],  # Empty because it's handled in python
+            "timeoutSeconds": timeout_seconds,
         }
         if self.client_identifier is None:
             request_payload["customTlsClient"] = {
@@ -302,6 +322,7 @@ class Session:
                 "pseudoHeaderOrder": self.pseudo_header_order,
                 "connectionFlow": self.connection_flow,
                 "priorityFrames": self.priority_frames,
+                "headerPriority": self.header_priority,
                 "certCompressionAlgo": self.cert_compression_algo,
                 "supportedVersions": self.supported_versions,
                 "supportedSignatureAlgorithms": self.supported_signature_algorithms,
