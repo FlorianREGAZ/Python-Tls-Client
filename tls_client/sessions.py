@@ -8,6 +8,7 @@ from .__version__ import __version__
 from typing import Any, Optional, Union
 from json import dumps, loads
 import urllib.parse
+import base64
 import ctypes
 import uuid
 
@@ -31,7 +32,6 @@ class Session:
         header_priority: Optional[dict] = None,  # Optional[list[str]]
         random_tls_extension_order: Optional = False,
         force_http1: Optional = False,
-        is_byte_request: Optional = False
     ) -> None:
         self._session_id = str(uuid.uuid4())
         # --- Standard Settings ----------------------------------------------------------------------------------------
@@ -225,9 +225,6 @@ class Session:
         # force HTTP1
         self.force_http1 = force_http1
 
-        # true - to be able to provide a base64 encoded request body which is an array of bytes
-        self.is_byte_request = is_byte_request
-
     def execute_request(
         self,
         method: str,
@@ -299,6 +296,7 @@ class Session:
             proxy = ""
 
         # --- Request --------------------------------------------------------------------------------------------------
+        is_byte_request = isinstance(request_body, (bytes, bytearray))
         request_payload = {
             "sessionId": self._session_id,
             "followRedirects": allow_redirects,
@@ -306,11 +304,11 @@ class Session:
             "headers": dict(headers),
             "headerOrder": self.header_order,
             "insecureSkipVerify": insecure_skip_verify,
-            "isByteRequest": self.is_byte_request,
+            "isByteRequest": is_byte_request,
             "proxyUrl": proxy,
             "requestUrl": url,
             "requestMethod": method,
-            "requestBody": request_body,
+            "requestBody": base64.b64encode(request_body).decode() if is_byte_request else request_body,
             "requestCookies": [],  # Empty because it's handled in python
             "timeoutSeconds": timeout_seconds,
         }
