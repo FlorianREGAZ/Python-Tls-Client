@@ -9,7 +9,12 @@ if platform == 'darwin':
 elif platform in ('win32', 'cygwin'):
     file_ext = '-64.dll' if 8 == ctypes.sizeof(ctypes.c_voidp) else '-32.dll'
 else:
-    file_ext = '-x86.so' if "x86" in machine() else '-amd64.so'
+    if machine() == "aarch64":
+        file_ext = '-arm64.so'
+    elif "x86" in machine():
+        file_ext = '-x86.so'
+    else:
+        file_ext = '-amd64.so'
 
 root_dir = os.path.abspath(os.path.dirname(__file__))
 library = ctypes.cdll.LoadLibrary(f'{root_dir}/dependencies/tls-client{file_ext}')
