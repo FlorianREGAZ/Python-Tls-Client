@@ -116,7 +116,7 @@ MacOS M2:
 
 Windows:
 ```
---add-binary '{path_to_library}/tls_client/dependencies/tls-client.dll;tls_client/dependencies'
+--add-binary '{path_to_library}/tls_client/dependencies/tls-client-64.dll;tls_client/dependencies'
 ```
 
 # Acknowledgements
