@@ -269,6 +269,7 @@ class Session:
                 # check if all header keys and values are strings
                 if type(header_key) is str and type(header_value) is str:
                     self.headers[header_key] = header_value
+                headers = self.headers
         else:
             headers = self.headers
 
