@@ -22,9 +22,11 @@ class Session:
         h2_settings: Optional[dict] = None,  # Optional[dict[str, int]]
         h2_settings_order: Optional[list] = None,  # Optional[list[str]]
         supported_signature_algorithms: Optional[list] = None,  # Optional[list[str]]
+        supported_delegated_credentials_algorithms: Optional[list] = None,  # Optional[list[str]]
         supported_versions: Optional[list] = None,  # Optional[list[str]]
         key_share_curves: Optional[list] = None,  # Optional[list[str]]
         cert_compression_algo: str = None,
+        additionalDecode: str = None,
         pseudo_header_order: Optional[list] = None,  # Optional[list[str]
         connection_flow: Optional[int] = None,
         priority_frames: Optional[list] = None,
@@ -32,6 +34,7 @@ class Session:
         header_priority: Optional[dict] = None,  # Optional[list[str]]
         random_tls_extension_order: Optional = False,
         force_http1: Optional = False,
+        catch_panics: Optional = False,
     ) -> None:
         self._session_id = str(uuid.uuid4())
         # --- Standard Settings ----------------------------------------------------------------------------------------
@@ -131,6 +134,33 @@ class Session:
         # ]
         self.supported_signature_algorithms = supported_signature_algorithms
 
+        # Supported Delegated Credentials Algorithms
+        # Possible Settings:
+        # PKCS1WithSHA256
+        # PKCS1WithSHA384
+        # PKCS1WithSHA512
+        # PSSWithSHA256
+        # PSSWithSHA384
+        # PSSWithSHA512
+        # ECDSAWithP256AndSHA256
+        # ECDSAWithP384AndSHA384
+        # ECDSAWithP521AndSHA512
+        # PKCS1WithSHA1
+        # ECDSAWithSHA1
+        #
+        # Example:
+        # [
+        #     "ECDSAWithP256AndSHA256",
+        #     "PSSWithSHA256",
+        #     "PKCS1WithSHA256",
+        #     "ECDSAWithP384AndSHA384",
+        #     "PSSWithSHA384",
+        #     "PKCS1WithSHA384",
+        #     "PSSWithSHA512",
+        #     "PKCS1WithSHA512",
+        # ]
+        self.supported_delegated_credentials_algorithms = supported_delegated_credentials_algorithms
+
         # Supported Versions
         # Possible Settings:
         # GREASE
@@ -165,6 +195,11 @@ class Session:
         # Cert Compression Algorithm
         # Examples: "zlib", "brotli", "zstd"
         self.cert_compression_algo = cert_compression_algo
+
+        # Additional Decode
+        # Make sure the go code decodes the response body once explicit by provided algorithm.
+        # Examples: null, "gzip", "br", "deflate"
+        self.additionalDecode = additionalDecode
 
         # Pseudo Header Order (:authority, :method, :path, :scheme)
         # Example:
@@ -225,6 +260,10 @@ class Session:
         # force HTTP1
         self.force_http1 = force_http1
 
+        # catch panics
+        # avoid the tls client to print the whole stacktrace when a panic (critical go error) happens
+        self.catch_panics = catch_panics
+
     def execute_request(
         self,
         method: str,
@@ -277,14 +316,11 @@ class Session:
         cookies = cookies or {}
         # Merge with session cookies
         cookies = merge_cookies(self.cookies, cookies)
-
-        cookie_header = get_cookie_header(
-            request_url=url,
-            request_headers=headers,
-            cookie_jar=cookies
-        )
-        if cookie_header is not None:
-            headers["Cookie"] = cookie_header
+        # turn cookie jar into dict
+        request_cookies = [
+            {'domain': c.domain, 'expires': c.expires, 'name': c.name, 'path': c.path, 'value': c.value}
+            for c in cookies
+        ]
 
         # --- Proxy ----------------------------------------------------------------------------------------------------
         proxy = proxy or self.proxies
@@ -302,15 +338,17 @@ class Session:
             "sessionId": self._session_id,
             "followRedirects": allow_redirects,
             "forceHttp1": self.force_http1,
+            "catchPanics": self.catch_panics,
             "headers": dict(headers),
             "headerOrder": self.header_order,
             "insecureSkipVerify": insecure_skip_verify,
             "isByteRequest": is_byte_request,
+            "additionalDecode": self.additionalDecode,
             "proxyUrl": proxy,
             "requestUrl": url,
             "requestMethod": method,
             "requestBody": base64.b64encode(request_body).decode() if is_byte_request else request_body,
-            "requestCookies": [],  # Empty because it's handled in python
+            "requestCookies": request_cookies,
             "timeoutSeconds": timeout_seconds,
         }
         if self.client_identifier is None:
@@ -325,6 +363,7 @@ class Session:
                 "certCompressionAlgo": self.cert_compression_algo,
                 "supportedVersions": self.supported_versions,
                 "supportedSignatureAlgorithms": self.supported_signature_algorithms,
+                "supportedDelegatedCredentialsAlgorithms": self.supported_delegated_credentials_algorithms ,
                 "keyShareCurves": self.key_share_curves,
             }
         else:
