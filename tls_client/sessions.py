@@ -26,7 +26,7 @@ class Session:
         supported_versions: Optional[list] = None,  # Optional[list[str]]
         key_share_curves: Optional[list] = None,  # Optional[list[str]]
         cert_compression_algo: str = None,
-        additionalDecode: str = None,
+        additional_decode: str = None,
         pseudo_header_order: Optional[list] = None,  # Optional[list[str]
         connection_flow: Optional[int] = None,
         priority_frames: Optional[list] = None,
@@ -199,7 +199,7 @@ class Session:
         # Additional Decode
         # Make sure the go code decodes the response body once explicit by provided algorithm.
         # Examples: null, "gzip", "br", "deflate"
-        self.additionalDecode = additionalDecode
+        self.additional_decode = additional_decode
 
         # Pseudo Header Order (:authority, :method, :path, :scheme)
         # Example:
@@ -343,7 +343,7 @@ class Session:
             "headerOrder": self.header_order,
             "insecureSkipVerify": insecure_skip_verify,
             "isByteRequest": is_byte_request,
-            "additionalDecode": self.additionalDecode,
+            "additionalDecode": self.additional_decode,
             "proxyUrl": proxy,
             "requestUrl": url,
             "requestMethod": method,
