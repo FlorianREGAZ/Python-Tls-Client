@@ -35,6 +35,7 @@ class Session:
         random_tls_extension_order: Optional = False,
         force_http1: Optional = False,
         catch_panics: Optional = False,
+        debug: Optional = False
     ) -> None:
         self._session_id = str(uuid.uuid4())
         # --- Standard Settings ----------------------------------------------------------------------------------------
@@ -264,6 +265,9 @@ class Session:
         # avoid the tls client to print the whole stacktrace when a panic (critical go error) happens
         self.catch_panics = catch_panics
 
+        # debugging
+        self.debug = debug
+
     def execute_request(
         self,
         method: str,
@@ -318,7 +322,7 @@ class Session:
         cookies = merge_cookies(self.cookies, cookies)
         # turn cookie jar into dict
         request_cookies = [
-            {'domain': c.domain, 'expires': c.expires, 'name': c.name, 'path': c.path, 'value': c.value}
+            {'domain': c.domain, 'expires': c.expires, 'name': c.name, 'path': c.path, 'value': c.value.replace('"', "")}
             for c in cookies
         ]
 
@@ -338,6 +342,7 @@ class Session:
             "sessionId": self._session_id,
             "followRedirects": allow_redirects,
             "forceHttp1": self.force_http1,
+            "withDebug": self.debug,
             "catchPanics": self.catch_panics,
             "headers": dict(headers),
             "headerOrder": self.header_order,
