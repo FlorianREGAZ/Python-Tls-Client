@@ -23,3 +23,7 @@ library = ctypes.cdll.LoadLibrary(f'{root_dir}/dependencies/tls-client{file_ext}
 request = library.request
 request.argtypes = [ctypes.c_char_p]
 request.restype = ctypes.c_char_p
+
+freeMemory = library.freeMemory
+freeMemory.argtypes = [ctypes.c_char_p]
+freeMemory.restype = ctypes.c_char_p

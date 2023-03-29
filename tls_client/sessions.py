@@ -1,4 +1,4 @@
-from .cffi import request
+from .cffi import request, freeMemory
 from .cookies import cookiejar_from_dict, get_cookie_header, merge_cookies, extract_cookies_to_jar
 from .exceptions import TLSClientExeption
 from .response import build_response
@@ -378,7 +378,8 @@ class Session:
         response_string = response_bytes.decode('utf-8')
         # convert response string to json
         response_object = loads(response_string)
-
+        # free the memory
+        freeMemory(response_object['id'].encode('utf-8'))
         # --- Response -------------------------------------------------------------------------------------------------
         # Error handling
         if response_object["status"] == 0:
