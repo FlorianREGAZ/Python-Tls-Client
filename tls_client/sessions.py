@@ -63,6 +63,9 @@ class Session:
         # CookieJar containing all currently outstanding cookies set on this session
         self.cookies = cookiejar_from_dict({})
 
+        # Timeout
+        self.timeout_seconds = 30
+
         # --- Advanced Settings ----------------------------------------------------------------------------------------
 
         # Examples:
@@ -275,7 +278,7 @@ class Session:
         json: Optional[dict] = None,  # Optional[dict]
         allow_redirects: Optional[bool] = False,
         insecure_skip_verify: Optional[bool] = False,
-        timeout_seconds: Optional[int] = 30,
+        timeout_seconds: Optional[int] = None,
         proxy: Optional[dict] = None  # Optional[dict[str, str]]
     ):
         # --- URL ------------------------------------------------------------------------------------------------------
@@ -332,6 +335,11 @@ class Session:
         else:
             proxy = ""
 
+        # --- Timeout --------------------------------------------------------------------------------------------------
+        # maximum time to wait
+
+        timeout_seconds = self.timeout_seconds or timeout_seconds
+        
         # --- Request --------------------------------------------------------------------------------------------------
         is_byte_request = isinstance(request_body, (bytes, bytearray))
         request_payload = {
