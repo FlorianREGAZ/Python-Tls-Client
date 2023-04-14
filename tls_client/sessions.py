@@ -338,7 +338,7 @@ class Session:
         # --- Timeout --------------------------------------------------------------------------------------------------
         # maximum time to wait
 
-        timeout_seconds = self.timeout_seconds or timeout_seconds
+        timeout_seconds = timeout_seconds or self.timeout_seconds
         
         # --- Request --------------------------------------------------------------------------------------------------
         is_byte_request = isinstance(request_body, (bytes, bytearray))
