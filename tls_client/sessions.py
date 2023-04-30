@@ -309,21 +309,27 @@ class Session:
             self.headers["Content-Type"] = content_type
 
         # --- Headers --------------------------------------------------------------------------------------------------
-        # merge headers of session and of the request
-        if headers is not None:
-            for header_key, header_value in headers.items():
-                # check if all header keys and values are strings
-                if type(header_key) is str and type(header_value) is str:
-                    self.headers[header_key] = header_value
-                headers = self.headers
-        else:
+        if self.headers is None:
+            headers = CaseInsensitiveDict(headers)
+        elif headers is None:
             headers = self.headers
+        else:
+            merged_headers = CaseInsensitiveDict(self.headers)
+            merged_headers.update(headers)
+
+            # Remove items, where the key or value is set to None.
+            none_keys = [k for (k, v) in merged_headers.items() if v is None or k is None]
+            for key in none_keys:
+                del merged_headers[key]
+
+            headers = merged_headers
 
         # --- Cookies --------------------------------------------------------------------------------------------------
         cookies = cookies or {}
         # Merge with session cookies
         cookies = merge_cookies(self.cookies, cookies)
         # turn cookie jar into dict
+        # in the cookie value the " gets removed, because the fhttp library in golang doesn't accept the character
         request_cookies = [
             {'domain': c.domain, 'expires': c.expires, 'name': c.name, 'path': c.path, 'value': c.value.replace('"', "")}
             for c in cookies
