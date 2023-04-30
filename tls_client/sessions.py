@@ -458,7 +458,7 @@ class Session:
         json: Optional[dict] = None,
         **kwargs: Any
     ):
-        """Sends a PUT request"""
+        """Sends a PATCH request"""
         return self.execute_request(method="PATCH", url=url, data=data, json=json, **kwargs)
 
     def delete(
