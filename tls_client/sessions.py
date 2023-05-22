@@ -3,7 +3,6 @@ from .cookies import cookiejar_from_dict, get_cookie_header, merge_cookies, extr
 from .exceptions import TLSClientExeption
 from .response import build_response
 from .structures import CaseInsensitiveDict
-from .__version__ import __version__
 
 from typing import Any, Optional, Union
 from json import dumps, loads
@@ -43,7 +42,7 @@ class Session:
         # Case-insensitive dictionary of headers, send on each request
         self.headers = CaseInsensitiveDict(
             {
-                "User-Agent": f"tls-client/{__version__}",
+                "User-Agent": f"tls-client",
                 "Accept-Encoding": "gzip, deflate, br",
                 "Accept": "*/*",
                 "Connection": "keep-alive",

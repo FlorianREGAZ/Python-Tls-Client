@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "tls-client"
+version = "0.2.1"
+description = "Advanced Python HTTP Client."
+authors = ["Florian Zager <your-email@example.com>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/FlorianREGAZ/Python-Tls-Client"
+packages = [{ include = "tls_client" }]
+classifiers = [
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Operating System :: Unix",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries",
+]
+include = ["tls_client/dependencies/*"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
