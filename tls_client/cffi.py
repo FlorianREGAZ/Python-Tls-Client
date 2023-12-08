@@ -27,3 +27,7 @@ request.restype = ctypes.c_char_p
 freeMemory = library.freeMemory
 freeMemory.argtypes = [ctypes.c_char_p]
 freeMemory.restype = ctypes.c_char_p
+
+destroySession = library.destroySession
+destroySession.argtypes = [ctypes.c_char_p]
+destroySession.restype = ctypes.c_char_p
