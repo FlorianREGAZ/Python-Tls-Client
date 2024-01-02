@@ -65,7 +65,7 @@ class Session:
         self.cookies = cookiejar_from_dict({})
 
         # Timeout
-        self.timeout_seconds = 30
+        self.timeout = 30
 
         # --- Advanced Settings ----------------------------------------------------------------------------------------
 
@@ -282,7 +282,7 @@ class Session:
         json: Optional[dict] = None,  # Optional[dict]
         allow_redirects: Optional[bool] = False,
         insecure_skip_verify: Optional[bool] = False,
-        timeout_seconds: Optional[int] = None,
+        timeout: Optional[int] = None,
         proxy: Optional[dict] = None  # Optional[dict[str, str]]
     ):
         # --- URL ------------------------------------------------------------------------------------------------------
@@ -348,7 +348,7 @@ class Session:
         # --- Timeout --------------------------------------------------------------------------------------------------
         # maximum time to wait
 
-        timeout_seconds = timeout_seconds or self.timeout_seconds
+        timeout = timeout or self.timeout
         
         # --- Request --------------------------------------------------------------------------------------------------
         is_byte_request = isinstance(request_body, (bytes, bytearray))
@@ -368,7 +368,7 @@ class Session:
             "requestMethod": method,
             "requestBody": base64.b64encode(request_body).decode() if is_byte_request else request_body,
             "requestCookies": request_cookies,
-            "timeoutSeconds": timeout_seconds,
+            "timeoutSeconds": timeout,
         }
         if self.client_identifier is None:
             request_payload["customTlsClient"] = {
