@@ -1,11 +1,11 @@
 from .cffi import request, freeMemory, destroySession
 from .cookies import cookiejar_from_dict, merge_cookies, extract_cookies_to_jar
 from .exceptions import TLSClientExeption
-from .response import build_response
+from .response import build_response, Response
 from .structures import CaseInsensitiveDict
 from .__version__ import __version__
 
-from typing import Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from json import dumps, loads
 import urllib.parse
 import base64
@@ -19,19 +19,19 @@ class Session:
         self,
         client_identifier: Optional[str] = None,
         ja3_string: Optional[str] = None,
-        h2_settings: Optional[dict] = None,  # Optional[dict[str, int]]
-        h2_settings_order: Optional[list] = None,  # Optional[list[str]]
-        supported_signature_algorithms: Optional[list] = None,  # Optional[list[str]]
-        supported_delegated_credentials_algorithms: Optional[list] = None,  # Optional[list[str]]
-        supported_versions: Optional[list] = None,  # Optional[list[str]]
-        key_share_curves: Optional[list] = None,  # Optional[list[str]]
+        h2_settings: Optional[Dict[str, int]] = None,
+        h2_settings_order: Optional[List[str]] = None,
+        supported_signature_algorithms: Optional[List[str]] = None,
+        supported_delegated_credentials_algorithms: Optional[List[str]] = None,
+        supported_versions: Optional[List[str]] = None,
+        key_share_curves: Optional[List[str]] = None,
         cert_compression_algo: str = None,
         additional_decode: str = None,
-        pseudo_header_order: Optional[list] = None,  # Optional[list[str]
+        pseudo_header_order: Optional[List[str]] = None,
         connection_flow: Optional[int] = None,
         priority_frames: Optional[list] = None,
-        header_order: Optional[list] = None,  # Optional[list[str]]
-        header_priority: Optional[dict] = None,  # Optional[list[str]]
+        header_order: Optional[List[str]] = None,
+        header_priority: Optional[List[str]] = None,
         random_tls_extension_order: Optional = False,
         force_http1: Optional = False,
         catch_panics: Optional = False,
@@ -277,7 +277,7 @@ class Session:
     def __exit__(self, *args):
         self.close()
 
-    def close(self):
+    def close(self) -> str:
         destroy_session_payload = {
             "sessionId": self._session_id
         }
@@ -307,7 +307,7 @@ class Session:
         insecure_skip_verify: Optional[bool] = False,
         timeout_seconds: Optional[int] = None,
         proxy: Optional[dict] = None  # Optional[dict[str, str]]
-    ):
+    ) -> Response:
         # --- URL ------------------------------------------------------------------------------------------------------
         # Prepare URL - add params to url
         if params is not None:
@@ -369,7 +369,7 @@ class Session:
             proxy = ""
 
         # --- Timeout --------------------------------------------------------------------------------------------------
-        # maximum time to wait
+        # maximum time to wait for a response
 
         timeout_seconds = timeout_seconds or self.timeout_seconds
         
@@ -440,7 +440,7 @@ class Session:
         self,
         url: str,
         **kwargs: Any
-    ):
+    ) -> Response:
         """Sends a GET request"""
         return self.execute_request(method="GET", url=url, **kwargs)
 
@@ -448,7 +448,7 @@ class Session:
         self,
         url: str,
         **kwargs: Any
-    ):
+    ) -> Response:
         """Sends a OPTIONS request"""
         return self.execute_request(method="OPTIONS", url=url, **kwargs)
 
@@ -456,7 +456,7 @@ class Session:
         self,
         url: str,
         **kwargs: Any
-    ):
+    ) -> Response:
         """Sends a HEAD request"""
         return self.execute_request(method="HEAD", url=url, **kwargs)
 
@@ -466,7 +466,7 @@ class Session:
         data: Optional[Union[str, dict]] = None,
         json: Optional[dict] = None,
         **kwargs: Any
-    ):
+    ) -> Response:
         """Sends a POST request"""
         return self.execute_request(method="POST", url=url, data=data, json=json, **kwargs)
 
@@ -476,7 +476,7 @@ class Session:
         data: Optional[Union[str, dict]] = None,
         json: Optional[dict] = None,
         **kwargs: Any
-    ):
+    ) -> Response:
         """Sends a PUT request"""
         return self.execute_request(method="PUT", url=url, data=data, json=json, **kwargs)
 
@@ -486,7 +486,7 @@ class Session:
         data: Optional[Union[str, dict]] = None,
         json: Optional[dict] = None,
         **kwargs: Any
-    ):
+    ) -> Response:
         """Sends a PATCH request"""
         return self.execute_request(method="PATCH", url=url, data=data, json=json, **kwargs)
 
@@ -494,6 +494,6 @@ class Session:
         self,
         url: str,
         **kwargs: Any
-    ):
+    ) -> Response:
         """Sends a DELETE request"""
         return self.execute_request(method="DELETE", url=url, **kwargs)

@@ -1,7 +1,6 @@
 from .cookies import cookiejar_from_dict, RequestsCookieJar
 from .structures import CaseInsensitiveDict
 
-from http.cookiejar import CookieJar
 from typing import Union
 import json
 
