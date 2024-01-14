@@ -432,13 +432,6 @@ def merge_cookies(cookiejar: RequestsCookieJar, cookies: Union[dict, RequestsCoo
 
     return cookiejar
 
-
-def get_cookie_header(request_url: str, request_headers: CaseInsensitiveDict, cookie_jar: RequestsCookieJar) -> str:
-    r = MockRequest(request_url, request_headers)
-    cookie_jar.add_cookie_header(r)
-    return r.get_new_headers().get("Cookie")
-
-
 def extract_cookies_to_jar(
         request_url: str,
         request_headers: CaseInsensitiveDict,
