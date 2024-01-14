@@ -1,8 +1,10 @@
 #!/usr/bin/env python
-from setuptools import setup, find_packages, Extension
+from setuptools import setup, find_packages
 from codecs import open
 import glob
+import sys
 import os
+
 
 data_files = []
 directories = glob.glob('tls_client/dependencies/')
@@ -40,7 +42,17 @@ setup(
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3 :: Only",
         "Topic :: Internet :: WWW/HTTP",
         "Topic :: Software Development :: Libraries",
-    ]
+    ],
+    project_urls={
+        "Source": "https://github.com/FlorianREGAZ/Python-Tls-Client",
+    }
 )
