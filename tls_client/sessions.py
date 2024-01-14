@@ -2,6 +2,7 @@ from .cffi import request, freeMemory, destroySession
 from .cookies import cookiejar_from_dict, merge_cookies, extract_cookies_to_jar
 from .exceptions import TLSClientExeption
 from .response import build_response, Response
+from .settings import ClientIdentifiers
 from .structures import CaseInsensitiveDict
 from .__version__ import __version__
 
@@ -17,7 +18,7 @@ class Session:
 
     def __init__(
         self,
-        client_identifier: Optional[str] = None,
+        client_identifier: ClientIdentifiers = None,
         ja3_string: Optional[str] = None,
         h2_settings: Optional[Dict[str, int]] = None,
         h2_settings_order: Optional[List[str]] = None,
@@ -76,6 +77,8 @@ class Session:
         # Safari --> safari_15_3, safari_15_6_1, safari_16_0
         # iOS --> safari_ios_15_5, safari_ios_15_6, safari_ios_16_0
         # iPadOS --> safari_ios_15_6
+        #
+        # for all possible client identifiers, check out the settings.py
         self.client_identifier = client_identifier
 
         # Set JA3 --> TLSVersion, Ciphers, Extensions, EllipticCurves, EllipticCurvePointFormats
