@@ -36,7 +36,8 @@ class Session:
         random_tls_extension_order: Optional = False,
         force_http1: Optional = False,
         catch_panics: Optional = False,
-        debug: Optional = False
+        debug: Optional = False,
+        certificate_pinning: Optional[Dict[str, List[str]]] = None,
     ) -> None:
         self._session_id = str(uuid.uuid4())
         # --- Standard Settings ----------------------------------------------------------------------------------------
@@ -67,6 +68,9 @@ class Session:
 
         # Timeout
         self.timeout_seconds = 30
+
+        # Certificate pinning
+        self.certificate_pinning = certificate_pinning
 
         # --- Advanced Settings ----------------------------------------------------------------------------------------
 
@@ -375,6 +379,11 @@ class Session:
         # maximum time to wait for a response
 
         timeout_seconds = timeout_seconds or self.timeout_seconds
+
+        # --- Certificate pinning --------------------------------------------------------------------------------------
+        # pins a certificate so that it restricts which certificates are considered valid
+
+        certificate_pinning = self.certificate_pinning
         
         # --- Request --------------------------------------------------------------------------------------------------
         is_byte_request = isinstance(request_body, (bytes, bytearray))
@@ -396,6 +405,8 @@ class Session:
             "requestCookies": request_cookies,
             "timeoutSeconds": timeout_seconds,
         }
+        if certificate_pinning:
+            request_payload["certificatePinningHosts"] = certificate_pinning
         if self.client_identifier is None:
             request_payload["customTlsClient"] = {
                 "ja3String": self.ja3_string,
