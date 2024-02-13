@@ -13,7 +13,6 @@ import base64
 import ctypes
 import uuid
 
-
 class Session:
 
     def __init__(
@@ -39,7 +38,7 @@ class Session:
         debug: Optional = False,
         certificate_pinning: Optional[Dict[str, List[str]]] = None,
     ) -> None:
-        self._session_id = str(uuid.uuid4())
+        self._session_id = 1
         # --- Standard Settings ----------------------------------------------------------------------------------------
 
         # Case-insensitive dictionary of headers, send on each request
@@ -315,6 +314,8 @@ class Session:
         timeout_seconds: Optional[int] = None,
         proxy: Optional[dict] = None  # Optional[dict[str, str]]
     ) -> Response:
+        
+        self._session_id += 1
         # --- URL ------------------------------------------------------------------------------------------------------
         # Prepare URL - add params to url
         if params is not None:
@@ -360,10 +361,13 @@ class Session:
         cookies = merge_cookies(self.cookies, cookies)
         # turn cookie jar into dict
         # in the cookie value the " gets removed, because the fhttp library in golang doesn't accept the character
-        request_cookies = [
-            {'domain': c.domain, 'expires': c.expires, 'name': c.name, 'path': c.path, 'value': c.value.replace('"', "")}
-            for c in cookies
-        ]
+        if 'cookie' in headers or 'Cookie' in headers:
+            request_cookies = []
+        else:
+            request_cookies = [
+                {'domain': c.domain, 'expires': c.expires, 'name': c.name, 'path': c.path, 'value': c.value.replace('"', "")}
+                for c in cookies
+            ]
 
         # --- Proxy ----------------------------------------------------------------------------------------------------
         proxy = proxy or self.proxies
@@ -388,7 +392,7 @@ class Session:
         # --- Request --------------------------------------------------------------------------------------------------
         is_byte_request = isinstance(request_body, (bytes, bytearray))
         request_payload = {
-            "sessionId": self._session_id,
+            "sessionId": str(self._session_id),
             "followRedirects": allow_redirects,
             "forceHttp1": self.force_http1,
             "withDebug": self.debug,
