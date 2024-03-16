@@ -319,7 +319,7 @@ class Session:
         # Prepare URL - add params to url
         if params is not None:
             url = f"{url}?{urllib.parse.urlencode(params, doseq=True)}"
-
+        if headers is None: headers = {}
         # --- Request Body ---------------------------------------------------------------------------------------------
         # Prepare request body - build request body
         # Data has priority. JSON is only used if data is None.
@@ -336,7 +336,7 @@ class Session:
             content_type = None
         # set content type if it isn't set
         if content_type is not None and "content-type" not in self.headers:
-            self.headers["Content-Type"] = content_type
+            headers["Content-Type"] = content_type
 
         # --- Headers --------------------------------------------------------------------------------------------------
         if self.headers is None:
