@@ -339,7 +339,7 @@ class Session:
             request_body = data
             content_type = None
         # set content type if it isn't set
-        if content_type is not None and "content-type" not in self.headers:
+        if content_type is not None and "content-type" not in self.headers and "content-type" not in headers:
             headers["Content-Type"] = content_type
 
         # --- Headers --------------------------------------------------------------------------------------------------
