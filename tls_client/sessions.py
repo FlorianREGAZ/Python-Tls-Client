@@ -12,6 +12,7 @@ import urllib.parse
 import base64
 import ctypes
 import uuid
+import urllib3
 
 
 class Session:
@@ -310,7 +311,8 @@ class Session:
         headers: Optional[dict] = None,  # Optional[dict[str, str]]
         cookies: Optional[dict] = None,  # Optional[dict[str, str]]
         json: Optional[dict] = None,  # Optional[dict]
-        allow_redirects: Optional[bool] = False,
+        files = None,
+        allow_redirects: Optional[bool] = True,
         insecure_skip_verify: Optional[bool] = False,
         timeout_seconds: Optional[int] = None,
         proxy: Optional[dict] = None  # Optional[dict[str, str]]
@@ -319,7 +321,7 @@ class Session:
         # Prepare URL - add params to url
         if params is not None:
             url = f"{url}?{urllib.parse.urlencode(params, doseq=True)}"
-
+        if headers is None: headers = {}
         # --- Request Body ---------------------------------------------------------------------------------------------
         # Prepare request body - build request body
         # Data has priority. JSON is only used if data is None.
@@ -328,6 +330,8 @@ class Session:
                 json = dumps(json)
             request_body = json
             content_type = "application/json"
+        elif data is None and files is not None:
+            request_body, content_type = urllib3.encode_multipart_formdata(files)
         elif data is not None and type(data) not in [str, bytes]:
             request_body = urllib.parse.urlencode(data, doseq=True)
             content_type = "application/x-www-form-urlencoded"
@@ -335,8 +339,8 @@ class Session:
             request_body = data
             content_type = None
         # set content type if it isn't set
-        if content_type is not None and "content-type" not in self.headers:
-            self.headers["Content-Type"] = content_type
+        if content_type is not None and "content-type" not in self.headers and "content-type" not in headers:
+            headers["Content-Type"] = content_type
 
         # --- Headers --------------------------------------------------------------------------------------------------
         if self.headers is None:
@@ -397,6 +401,7 @@ class Session:
             "headerOrder": self.header_order,
             "insecureSkipVerify": insecure_skip_verify,
             "isByteRequest": is_byte_request,
+            "isByteResponse": True,
             "additionalDecode": self.additional_decode,
             "proxyUrl": proxy,
             "requestUrl": url,
@@ -425,7 +430,6 @@ class Session:
         else:
             request_payload["tlsClientIdentifier"] = self.client_identifier
             request_payload["withRandomTLSExtensionOrder"] = self.random_tls_extension_order
-
         # this is a pointer to the response
         response = request(dumps(request_payload).encode('utf-8'))
         # dereference the pointer to a byte array
