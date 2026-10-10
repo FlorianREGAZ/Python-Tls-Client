@@ -92,13 +92,6 @@ res = session.post(
 )
 ```
 
-Timeouts:
-```python
-res = session.get("https://www.example.com/", timeout=2.5)  # seconds, int or float
-```
-`timeout` works like in requests. `timeout_seconds` is the older name for it; passing both raises `ValueError`. Without either, `session.timeout_seconds` (30 by default) applies.
-The native library sets a session's timeout when the session sends its first request and keeps it, so a different timeout on a later request of the same session has no effect. Use a new `Session` for that.
-
 # Pyinstaller / Pyarmor
 **If you want to pack the library with Pyinstaller or Pyarmor, make sure to add this to your command:**
 
