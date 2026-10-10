@@ -1,4 +1,5 @@
 import ctypes
+import functools
 import os
 import platform
 import sys
@@ -72,20 +73,32 @@ def _load_library() -> ctypes.CDLL:
             "Wheels on PyPI include it, so this usually means tls_client runs from a source checkout. "
             f"Download it with: python scripts/fetch_library.py {filename}"
         )
-    return ctypes.cdll.LoadLibrary(path)
+    library = ctypes.cdll.LoadLibrary(path)
+    for function in (library.request, library.freeMemory, library.destroySession):
+        function.argtypes = [ctypes.c_char_p]
+        function.restype = ctypes.c_char_p
+    return library
 
 
-library = _load_library()
+@functools.cache
+def load_library() -> ctypes.CDLL:
+    """The native library, loaded on first use.
 
-# extract the exposed request function from the shared package
-request = library.request
-request.argtypes = [ctypes.c_char_p]
-request.restype = ctypes.c_char_p
+    Loading it starts the Go runtime, which doesn't survive fork(): a forked child that calls into a runtime
+    started by its parent deadlocks. Loading lazily keeps `import tls_client` safe before forking.
+    """
+    return _load_library()
 
-freeMemory = library.freeMemory
-freeMemory.argtypes = [ctypes.c_char_p]
-freeMemory.restype = ctypes.c_char_p
 
-destroySession = library.destroySession
-destroySession.argtypes = [ctypes.c_char_p]
-destroySession.restype = ctypes.c_char_p
+def request(payload: bytes) -> bytes:
+    response: bytes = load_library().request(payload)
+    return response
+
+
+def freeMemory(response_id: bytes) -> None:
+    load_library().freeMemory(response_id)
+
+
+def destroySession(payload: bytes) -> bytes:
+    response: bytes = load_library().destroySession(payload)
+    return response

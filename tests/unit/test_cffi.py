@@ -1,3 +1,6 @@
+import subprocess
+import sys
+
 import pytest
 
 from tls_client import cffi
@@ -86,3 +89,35 @@ def test_missing_library_says_how_to_download_it(monkeypatch, tmp_path):
 
     with pytest.raises(FileNotFoundError, match=r"python scripts/fetch_library\.py tls-client-"):
         cffi._load_library()
+
+
+def test_importing_tls_client_does_not_load_the_library():
+    # A fresh interpreter, because this one may have loaded the library already.
+    code = (
+        "import ctypes\n"
+        "def refuse(path): raise AssertionError(f'loaded {path} too early')\n"
+        "ctypes.cdll.LoadLibrary = refuse\n"
+        "import tls_client\n"
+        "tls_client.Session()\n"
+    )
+
+    subprocess.run([sys.executable, "-c", code], check=True, timeout=60)
+
+
+def test_library_is_loaded_once(monkeypatch):
+    loaded = []
+
+    def load():
+        loaded.append(True)
+        return "library"
+
+    monkeypatch.setattr(cffi, "_load_library", load)
+    cffi.load_library.cache_clear()
+    try:
+        assert cffi.load_library() == "library"
+        assert cffi.load_library() == "library"
+    finally:
+        # Later tests should get the real library.
+        cffi.load_library.cache_clear()
+
+    assert loaded == [True]
