@@ -108,12 +108,6 @@ async def main():
 asyncio.run(main())
 ```
 
-Each request runs in a worker thread, so requests on one session run at the same time and share its connections.
-The thread pool limits how many run at once; pass `executor=ThreadPoolExecutor(max_workers=50)` for more.
-A request uses the headers and cookies the session had when it started, and cookies it receives go into `session.cookies` when it finishes.
-`headers`, `cookies`, `proxies`, `params` and `timeout_seconds` work as on `Session`; the other settings are on `session.session`.
-Use an `AsyncSession` from one event loop only.
-
 # Pyinstaller / Pyarmor
 **If you want to pack the library with Pyinstaller or Pyarmor, make sure to add this to your command:**
 
