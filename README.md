@@ -108,6 +108,20 @@ async def main():
 asyncio.run(main())
 ```
 
+Example 4 - File upload:
+```python
+import tls_client
+
+session = tls_client.Session(client_identifier="chrome_120")
+
+with open("report.pdf", "rb") as f:
+    res = session.post(
+        "https://www.example.com/upload",
+        data={"title": "Report"},
+        files={"file": f, "notes": ("notes.txt", "some text", "text/plain")}
+    )
+```
+
 # Pyinstaller / Pyarmor
 **If you want to pack the library with Pyinstaller or Pyarmor, make sure to add this to your command:**
 
