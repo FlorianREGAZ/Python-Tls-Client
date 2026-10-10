@@ -1,21 +1,20 @@
-from .cffi import request, freeMemory, destroySession
-from .cookies import cookiejar_from_dict, merge_cookies, extract_cookies_to_jar
-from .exceptions import TLSClientException
-from .response import build_response, Response
-from .settings import ClientIdentifiers
-from .structures import CaseInsensitiveDict
-from .__version__ import __version__
-
-from typing import Any, Dict, List, Optional, Union
-from json import dumps, loads
-import urllib.parse
 import base64
 import ctypes
+import urllib.parse
 import uuid
+from json import dumps, loads
+from typing import Any, Dict, List, Optional, Union
+
+from .__version__ import __version__
+from .cffi import destroySession, freeMemory, request
+from .cookies import cookiejar_from_dict, extract_cookies_to_jar, merge_cookies
+from .exceptions import TLSClientException
+from .response import Response, build_response
+from .settings import ClientIdentifiers
+from .structures import CaseInsensitiveDict
 
 
 class Session:
-
     def __init__(
         self,
         client_identifier: ClientIdentifiers = "chrome_120",
@@ -285,19 +284,17 @@ class Session:
         self.close()
 
     def close(self) -> str:
-        destroy_session_payload = {
-            "sessionId": self._session_id
-        }
+        destroy_session_payload = {"sessionId": self._session_id}
 
-        destroy_session_response = destroySession(dumps(destroy_session_payload).encode('utf-8'))
+        destroy_session_response = destroySession(dumps(destroy_session_payload).encode("utf-8"))
         # we dereference the pointer to a byte array
         destroy_session_response_bytes = ctypes.string_at(destroy_session_response)
         # convert our byte array to a string (tls client returns json)
-        destroy_session_response_string = destroy_session_response_bytes.decode('utf-8')
+        destroy_session_response_string = destroy_session_response_bytes.decode("utf-8")
         # convert response string to json
         destroy_session_response_object = loads(destroy_session_response_string)
 
-        freeMemory(destroy_session_response_object['id'].encode('utf-8'))
+        freeMemory(destroy_session_response_object["id"].encode("utf-8"))
 
         return destroy_session_response_string
 
@@ -314,7 +311,7 @@ class Session:
         allow_redirects: Optional[bool] = False,
         insecure_skip_verify: Optional[bool] = False,
         timeout_seconds: Optional[int] = None,
-        proxy: Optional[dict] = None  # Optional[dict[str, str]]
+        proxy: Optional[dict] = None,  # Optional[dict[str, str]]
     ) -> Response:
         # --- URL ------------------------------------------------------------------------------------------------------
         # Prepare URL - add params to url
@@ -368,14 +365,19 @@ class Session:
         # in the cookie value the " gets removed, because the fhttp library in golang doesn't accept the character
         # expires is omitted for session cookies, because the tls client parses null as 1970 and drops the cookie
         request_cookies = [
-            {'domain': c.domain, 'name': c.name, 'path': c.path, 'value': c.value.replace('"', ""),
-             **({'expires': c.expires} if c.expires is not None else {})}
+            {
+                "domain": c.domain,
+                "name": c.name,
+                "path": c.path,
+                "value": c.value.replace('"', ""),
+                **({"expires": c.expires} if c.expires is not None else {}),
+            }
             for c in cookies
         ]
 
         # --- Proxy ----------------------------------------------------------------------------------------------------
         proxy = proxy or self.proxies
-        
+
         if type(proxy) is dict and "http" in proxy:
             proxy = proxy["http"]
         elif type(proxy) is str:
@@ -392,7 +394,7 @@ class Session:
         # pins a certificate so that it restricts which certificates are considered valid
 
         certificate_pinning = self.certificate_pinning
-        
+
         # --- Request --------------------------------------------------------------------------------------------------
         is_byte_request = isinstance(request_body, (bytes, bytearray))
         request_payload = {
@@ -427,7 +429,7 @@ class Session:
                 "certCompressionAlgos": [self.cert_compression_algo] if self.cert_compression_algo else None,
                 "supportedVersions": self.supported_versions,
                 "supportedSignatureAlgorithms": self.supported_signature_algorithms,
-                "supportedDelegatedCredentialsAlgorithms": self.supported_delegated_credentials_algorithms ,
+                "supportedDelegatedCredentialsAlgorithms": self.supported_delegated_credentials_algorithms,
                 "keyShareCurves": self.key_share_curves,
             }
         else:
@@ -435,87 +437,56 @@ class Session:
             request_payload["withRandomTLSExtensionOrder"] = self.random_tls_extension_order
 
         # this is a pointer to the response
-        response = request(dumps(request_payload).encode('utf-8'))
+        response = request(dumps(request_payload).encode("utf-8"))
         # dereference the pointer to a byte array
         response_bytes = ctypes.string_at(response)
         # convert our byte array to a string (tls client returns json)
-        response_string = response_bytes.decode('utf-8')
+        response_string = response_bytes.decode("utf-8")
         # convert response string to json
         response_object = loads(response_string)
         # free the memory
-        freeMemory(response_object['id'].encode('utf-8'))
+        freeMemory(response_object["id"].encode("utf-8"))
         # --- Response -------------------------------------------------------------------------------------------------
         # Error handling
         if response_object["status"] == 0:
             raise TLSClientException(response_object["body"])
         # Set response cookies
         response_cookie_jar = extract_cookies_to_jar(
-            request_url=url,
-            request_headers=headers,
-            cookie_jar=cookies,
-            response_headers=response_object["headers"]
+            request_url=url, request_headers=headers, cookie_jar=cookies, response_headers=response_object["headers"]
         )
         # build response class
         return build_response(response_object, response_cookie_jar)
 
-    def get(
-        self,
-        url: str,
-        **kwargs: Any
-    ) -> Response:
+    def get(self, url: str, **kwargs: Any) -> Response:
         """Sends a GET request"""
         return self.execute_request(method="GET", url=url, **kwargs)
 
-    def options(
-        self,
-        url: str,
-        **kwargs: Any
-    ) -> Response:
+    def options(self, url: str, **kwargs: Any) -> Response:
         """Sends a OPTIONS request"""
         return self.execute_request(method="OPTIONS", url=url, **kwargs)
 
-    def head(
-        self,
-        url: str,
-        **kwargs: Any
-    ) -> Response:
+    def head(self, url: str, **kwargs: Any) -> Response:
         """Sends a HEAD request"""
         return self.execute_request(method="HEAD", url=url, **kwargs)
 
     def post(
-        self,
-        url: str,
-        data: Optional[Union[str, dict]] = None,
-        json: Optional[dict] = None,
-        **kwargs: Any
+        self, url: str, data: Optional[Union[str, dict]] = None, json: Optional[dict] = None, **kwargs: Any
     ) -> Response:
         """Sends a POST request"""
         return self.execute_request(method="POST", url=url, data=data, json=json, **kwargs)
 
     def put(
-        self,
-        url: str,
-        data: Optional[Union[str, dict]] = None,
-        json: Optional[dict] = None,
-        **kwargs: Any
+        self, url: str, data: Optional[Union[str, dict]] = None, json: Optional[dict] = None, **kwargs: Any
     ) -> Response:
         """Sends a PUT request"""
         return self.execute_request(method="PUT", url=url, data=data, json=json, **kwargs)
 
     def patch(
-        self,
-        url: str,
-        data: Optional[Union[str, dict]] = None,
-        json: Optional[dict] = None,
-        **kwargs: Any
+        self, url: str, data: Optional[Union[str, dict]] = None, json: Optional[dict] = None, **kwargs: Any
     ) -> Response:
         """Sends a PATCH request"""
         return self.execute_request(method="PATCH", url=url, data=data, json=json, **kwargs)
 
-    def delete(
-        self,
-        url: str,
-        **kwargs: Any
-    ) -> Response:
+    def delete(self, url: str, **kwargs: Any) -> Response:
         """Sends a DELETE request"""
         return self.execute_request(method="DELETE", url=url, **kwargs)

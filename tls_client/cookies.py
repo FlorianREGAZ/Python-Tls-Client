@@ -1,10 +1,10 @@
-from .structures import CaseInsensitiveDict
-
-from http.cookiejar import CookieJar, Cookie
-from typing import MutableMapping, Union, Any
-from urllib.parse import urlparse, urlunparse
-from http.client import HTTPMessage
 import copy
+from http.client import HTTPMessage
+from http.cookiejar import Cookie, CookieJar
+from typing import Any, MutableMapping, Union
+from urllib.parse import urlparse, urlunparse
+
+from .structures import CaseInsensitiveDict
 
 try:
     import threading
@@ -103,7 +103,7 @@ class CookieConflictError(RuntimeError):
 
 
 class RequestsCookieJar(CookieJar, MutableMapping):
-    """ Origin: requests library (https://github.com/psf/requests)
+    """Origin: requests library (https://github.com/psf/requests)
     Compatibility class; is a cookielib.CookieJar, but exposes a dict
     interface.
 
@@ -140,9 +140,7 @@ class RequestsCookieJar(CookieJar, MutableMapping):
         """
         # support client code that unsets cookies by assignment of a None value:
         if value is None:
-            remove_cookie_by_name(
-                self, name, domain=kwargs.get("domain"), path=kwargs.get("path")
-            )
+            remove_cookie_by_name(self, name, domain=kwargs.get("domain"), path=kwargs.get("path"))
             return
 
         c = create_cookie(name, value, **kwargs)
@@ -239,9 +237,7 @@ class RequestsCookieJar(CookieJar, MutableMapping):
         """
         dictionary = {}
         for cookie in iter(self):
-            if (domain is None or cookie.domain == domain) and (
-                path is None or cookie.path == path
-            ):
+            if (domain is None or cookie.domain == domain) and (path is None or cookie.path == path):
                 dictionary[cookie.name] = cookie.value
         return dictionary
 
@@ -274,11 +270,7 @@ class RequestsCookieJar(CookieJar, MutableMapping):
         remove_cookie_by_name(self, name)
 
     def set_cookie(self, cookie, *args, **kwargs):
-        if (
-            hasattr(cookie.value, "startswith")
-            and cookie.value.startswith('"')
-            and cookie.value.endswith('"')
-        ):
+        if hasattr(cookie.value, "startswith") and cookie.value.startswith('"') and cookie.value.endswith('"'):
             cookie.value = cookie.value.replace('\\"', "")
         return super().set_cookie(cookie, *args, **kwargs)
 
@@ -329,9 +321,7 @@ class RequestsCookieJar(CookieJar, MutableMapping):
                     if path is None or cookie.path == path:
                         if toReturn is not None:
                             # if there are multiple cookies that meet passed in criteria
-                            raise CookieConflictError(
-                                f"There are multiple cookies with name, {name!r}"
-                            )
+                            raise CookieConflictError(f"There are multiple cookies with name, {name!r}")
                         # we will eventually return this as long as no cookie conflict
                         toReturn = cookie.value
 
@@ -400,9 +390,7 @@ def create_cookie(name: str, value: str, **kwargs: Any) -> Cookie:
 
     badargs = set(kwargs) - set(result)
     if badargs:
-        raise TypeError(
-            f"create_cookie() got unexpected keyword arguments: {list(badargs)}"
-        )
+        raise TypeError(f"create_cookie() got unexpected keyword arguments: {list(badargs)}")
 
     result.update(kwargs)
     result["port_specified"] = bool(result["port"])
@@ -432,12 +420,10 @@ def merge_cookies(cookiejar: RequestsCookieJar, cookies: Union[dict, RequestsCoo
 
     return cookiejar
 
+
 def extract_cookies_to_jar(
-        request_url: str,
-        request_headers: CaseInsensitiveDict,
-        cookie_jar: RequestsCookieJar,
-        response_headers: dict
-    ) -> RequestsCookieJar:
+    request_url: str, request_headers: CaseInsensitiveDict, cookie_jar: RequestsCookieJar, response_headers: dict
+) -> RequestsCookieJar:
     response_cookie_jar = cookiejar_from_dict({})
 
     req = MockRequest(request_url, request_headers)
@@ -446,9 +432,7 @@ def extract_cookies_to_jar(
     http_message._headers = []
     for header_name, header_values in response_headers.items():
         for header_value in header_values:
-            http_message._headers.append(
-                (header_name, header_value)
-            )
+            http_message._headers.append((header_name, header_value))
     res = MockResponse(http_message)
     response_cookie_jar.extract_cookies(res, req)
 
