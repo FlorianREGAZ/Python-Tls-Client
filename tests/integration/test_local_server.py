@@ -66,7 +66,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             self.end_headers()
             self.wfile.write(body)
-        except (BrokenPipeError, ConnectionResetError):
+        except ConnectionError:
             # The client gave up waiting, as the timeout tests make it do.
             pass
 
