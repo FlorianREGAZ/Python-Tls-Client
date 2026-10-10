@@ -1,5 +1,6 @@
 import base64
 import ctypes
+import difflib
 import urllib.parse
 import uuid
 from collections.abc import Mapping
@@ -12,7 +13,7 @@ from .cffi import destroySession, freeMemory, request
 from .cookies import cookiejar_from_dict, extract_cookies_to_jar, merge_cookies
 from .exceptions import TLSClientException
 from .response import Response, build_response
-from .settings import ClientIdentifiers
+from .settings import CLIENT_IDENTIFIERS, ClientIdentifiers
 from .structures import CaseInsensitiveDict
 
 # Request body: str and bytes are sent as-is, a mapping is form-encoded.
@@ -47,6 +48,16 @@ class Session:
         debug: bool = False,
         certificate_pinning: dict[str, list[str]] | None = None,
     ) -> None:
+        # The library silently falls back to its default profile for unknown names, so catch typos here instead.
+        if client_identifier is not None and client_identifier not in CLIENT_IDENTIFIERS:
+            by_lowercase = {name.lower(): name for name in CLIENT_IDENTIFIERS}
+            matches = difflib.get_close_matches(str(client_identifier).lower(), by_lowercase, n=3)
+            hint = f" Did you mean {', '.join(repr(by_lowercase[m]) for m in matches)}?" if matches else ""
+            raise ValueError(
+                f"Unknown client_identifier {client_identifier!r}.{hint} Every supported name is listed in "
+                "tls_client/settings.py; pass client_identifier=None to use a custom TLS configuration instead."
+            )
+
         self._session_id = str(uuid.uuid4())
         # --- Standard Settings ----------------------------------------------------------------------------------------
 
@@ -82,15 +93,9 @@ class Session:
 
         # --- Advanced Settings ----------------------------------------------------------------------------------------
 
-        # Examples:
-        # Chrome --> chrome_103, chrome_104, chrome_105, chrome_106
-        # Firefox --> firefox_102, firefox_104
-        # Opera --> opera_89, opera_90
-        # Safari --> safari_15_3, safari_15_6_1, safari_16_0
-        # iOS --> safari_ios_15_5, safari_ios_15_6, safari_ios_16_0
-        # iPadOS --> safari_ios_15_6
-        #
-        # for all possible client identifiers, check out the settings.py
+        # Browser profile to impersonate, e.g. chrome_120, firefox_120 or safari_ios_17_0.
+        # For all possible client identifiers, check out the settings.py.
+        # None uses the custom TLS settings below (ja3_string, h2_settings, ...) instead of a preset.
         self.client_identifier = client_identifier
 
         # Set JA3 --> TLSVersion, Ciphers, Extensions, EllipticCurves, EllipticCurvePointFormats
