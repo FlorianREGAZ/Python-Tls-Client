@@ -117,6 +117,58 @@ class TestBody:
 
         assert response.text == "café"
 
+    @pytest.mark.parametrize(
+        "html",
+        [
+            '<html><head><meta charset="gbk"><title>{}</title>',
+            "<html><head><META HTTP-EQUIV='Content-Type' CONTENT='text/html; charset=GBK'><title>{}</title>",
+            "<html><head><meta charset=gb2312><title>{}</title>",
+        ],
+    )
+    def test_text_uses_the_charset_declared_in_a_meta_tag(self, html):
+        response = build_response(
+            library_reply(body=data_uri(html.format("中文").encode("gbk")), headers={"Content-Type": ["text/html"]}),
+            cookiejar_from_dict({}),
+        )
+
+        assert response.encoding.lower() == "gbk"
+        assert "<title>中文</title>" in response.text
+
+    def test_text_uses_the_encoding_of_an_xml_declaration(self):
+        body = '<?xml version="1.0" encoding="Shift_JIS"?><a>日本</a>'.encode("shift_jis")
+
+        response = build_response(
+            library_reply(body=data_uri(body), headers={"Content-Type": ["application/xml"]}), cookiejar_from_dict({})
+        )
+
+        assert response.text.endswith("<a>日本</a>")
+
+    def test_header_charset_wins_over_a_meta_tag(self):
+        body = '<meta charset="gbk">café'.encode("latin-1")
+
+        response = build_response(
+            library_reply(body=data_uri(body), headers={"Content-Type": ["text/html; charset=ISO-8859-1"]}),
+            cookiejar_from_dict({}),
+        )
+
+        assert response.encoding == "ISO-8859-1"
+        assert response.text.endswith("café")
+
+    def test_meta_tags_are_ignored_outside_html_and_xml(self):
+        body = b'{"html": "<meta charset=gbk>"}'
+
+        response = build_response(
+            library_reply(body=data_uri(body), headers={"Content-Type": ["application/json"]}), cookiejar_from_dict({})
+        )
+
+        assert response.encoding is None
+
+    @pytest.mark.parametrize("encoding", ["utf-8-sig", "utf-16"])
+    def test_text_uses_and_drops_a_byte_order_mark(self, encoding):
+        response = build_response(library_reply(body=data_uri("héllo".encode(encoding))), cookiejar_from_dict({}))
+
+        assert response.text == "héllo"
+
     def test_body_that_is_not_a_data_uri_is_taken_as_text(self):
         response = build_response(library_reply(body='{"plain": true}'), cookiejar_from_dict({}))
 
