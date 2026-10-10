@@ -26,7 +26,10 @@ RELEASE_API_URL = "https://api.github.com/repos/bogdanfinn/tls-client/releases/t
 ASSETS = {
     "tls-client-darwin-amd64.dylib": "tls-client-darwin-amd64-{version}.dylib",
     "tls-client-darwin-arm64.dylib": "tls-client-darwin-arm64-{version}.dylib",
+    # Upstream's own builds have no 32-bit x86 Linux library; this is its xgo build.
+    "tls-client-linux-386.so": "tls-client-xgo-{version}-linux-386.so",
     "tls-client-linux-arm64.so": "tls-client-linux-arm64-{version}.so",
+    "tls-client-linux-armv7.so": "tls-client-linux-armv7-{version}.so",
     "tls-client-linux-ubuntu-amd64.so": "tls-client-linux-ubuntu-amd64-{version}.so",
     "tls-client-windows-32.dll": "tls-client-windows-32-{version}.dll",
     "tls-client-windows-64.dll": "tls-client-windows-64-{version}.dll",

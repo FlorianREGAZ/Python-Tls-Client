@@ -47,7 +47,9 @@ jobs:
         library:
           - tls-client-darwin-amd64.dylib
           - tls-client-darwin-arm64.dylib
+          - tls-client-linux-386.so
           - tls-client-linux-arm64.so
+          - tls-client-linux-armv7.so
           - tls-client-linux-ubuntu-amd64.so
           - tls-client-windows-32.dll
           - tls-client-windows-64.dll
@@ -107,10 +109,40 @@ jobs:
       # uv refuses a wheel whose tags don't match the interpreter, so this also checks the tag.
       - run: uv run --no-project --isolated --python ${{ matrix.python }} --with dist/*.whl python -I scripts/smoke_test.py ${{ matrix.library }}
 
+  smoke-test-container:
+    name: Smoke test (${{ matrix.library }})
+    needs: wheel
+    # GitHub has no 32-bit runners, so these run in a 32-bit container, under QEMU for armv7.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - library: tls-client-linux-386.so
+            platform: linux/386
+          - library: tls-client-linux-armv7.so
+            platform: linux/arm/v7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        if: matrix.platform == 'linux/arm/v7'
+        with:
+          platforms: arm
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: wheel-${{ matrix.library }}
+          path: dist
+      # pip refuses a wheel whose tags don't match the interpreter, so this also checks the tag.
+      - run: >-
+          docker run --rm --platform ${{ matrix.platform }} --volume "$PWD:/src" --workdir /src python:3.12-slim
+          sh -c "pip install --quiet --root-user-action=ignore dist/*.whl && python -I scripts/smoke_test.py ${{ matrix.library }}"
+
   publish:
     name: Publish to PyPI
     if: github.event_name == 'release'
-    needs: [sdist, smoke-test]
+    needs: [sdist, smoke-test, smoke-test-container]
     runs-on: ubuntu-latest
     environment:
       name: pypi

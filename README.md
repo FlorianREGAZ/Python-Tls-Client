@@ -142,13 +142,15 @@ Windows / 32-bit:
 ```
 
 # Native library
-The TLS and HTTP work is done by [bogdanfinn/tls-client](https://github.com/bogdanfinn/tls-client), a Go library that its author builds into shared libraries with [`cffi_dist/build.sh`](https://github.com/bogdanfinn/tls-client/blob/v1.16.0/cffi_dist/build.sh). This project compiles nothing: each wheel contains one unmodified asset from the upstream [v1.16.0 release](https://github.com/bogdanfinn/tls-client/releases/tag/v1.16.0), renamed without the version.
+The TLS and HTTP work is done by [bogdanfinn/tls-client](https://github.com/bogdanfinn/tls-client), a Go library that its author builds into shared libraries with [`cffi_dist/build.sh`](https://github.com/bogdanfinn/tls-client/blob/v1.16.0/cffi_dist/build.sh). This project compiles nothing: each wheel contains one unmodified asset from the upstream [v1.16.0 release](https://github.com/bogdanfinn/tls-client/releases/tag/v1.16.0), renamed as listed below.
 
 | Library | Upstream release asset |
 | --- | --- |
 | `tls-client-darwin-amd64.dylib` | `tls-client-darwin-amd64-1.16.0.dylib` |
 | `tls-client-darwin-arm64.dylib` | `tls-client-darwin-arm64-1.16.0.dylib` |
+| `tls-client-linux-386.so` | `tls-client-xgo-1.16.0-linux-386.so` |
 | `tls-client-linux-arm64.so` | `tls-client-linux-arm64-1.16.0.so` |
+| `tls-client-linux-armv7.so` | `tls-client-linux-armv7-1.16.0.so` |
 | `tls-client-linux-ubuntu-amd64.so` | `tls-client-linux-ubuntu-amd64-1.16.0.so` |
 | `tls-client-windows-32.dll` | `tls-client-windows-32-1.16.0.dll` |
 | `tls-client-windows-64.dll` | `tls-client-windows-64-1.16.0.dll` |
