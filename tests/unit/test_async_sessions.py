@@ -13,7 +13,9 @@ URL = "https://example.com/path"
 
 
 def sent_cookies(payload: dict) -> dict[str, str]:
-    return {cookie["name"]: cookie["value"] for cookie in payload["requestCookies"]}
+    """Cookies of the Cookie header the request was sent with."""
+    header = payload["headers"].get("Cookie", "")
+    return dict(pair.split("=", 1) for pair in header.split("; ") if pair)
 
 
 class CountingExecutor(ThreadPoolExecutor):

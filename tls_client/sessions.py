@@ -10,7 +10,7 @@ from typing import Any, TypeAlias
 
 from .__version__ import __version__
 from .cffi import destroySession, freeMemory, request
-from .cookies import cookiejar_from_dict, extract_cookies_to_jar, merge_cookies
+from .cookies import cookiejar_from_dict, extract_cookies_to_jar, get_cookie_header, merge_cookies
 from .exceptions import TLSClientException
 from .multipart import Files, encode_multipart
 from .response import Response, build_response
@@ -403,21 +403,16 @@ class Session:
             request_header_order = header_order
 
         # --- Cookies --------------------------------------------------------------------------------------------------
-        # Merge with session cookies
+        # Request cookies are added to the session jar. The jar is the only cookie store: the library runs without one
+        # (withoutCookieJar), so a cookie removed from the jar is no longer sent.
         cookie_jar = merge_cookies(self.cookies, cookies or {})
-        # turn cookie jar into dict
-        # in the cookie value the " gets removed, because the fhttp library in golang doesn't accept the character
-        # expires is omitted for session cookies, because the tls client parses null as 1970 and drops the cookie
-        request_cookies = [
-            {
-                "domain": c.domain,
-                "name": c.name,
-                "path": c.path,
-                "value": (c.value or "").replace('"', ""),
-                **({"expires": c.expires} if c.expires is not None else {}),
-            }
-            for c in cookie_jar
-        ]
+        # The jar picks the cookies for the URL by domain, path, secure flag and expiry, and they're sent as a Cookie
+        # header. A Cookie header passed in is kept, with the jar's cookies after it.
+        cookie_header = "; ".join(
+            filter(None, [request_headers.pop("Cookie", None), get_cookie_header(cookie_jar, url, request_headers)])
+        )
+        if cookie_header:
+            request_headers["Cookie"] = cookie_header
 
         # --- Proxy ----------------------------------------------------------------------------------------------------
         proxy = proxy or self.proxies
@@ -446,6 +441,9 @@ class Session:
         request_payload: dict[str, Any] = {
             "sessionId": self._session_id,
             "followRedirects": allow_redirects,
+            # Cookies come from self.cookies only. Without this, the library also keeps the cookies of every response
+            # in a jar of its own and sends them on later requests of the session.
+            "withoutCookieJar": True,
             "forceHttp1": self.force_http1,
             "withDebug": self.debug,
             "catchPanics": self.catch_panics,
@@ -462,7 +460,6 @@ class Session:
             "requestBody": base64.b64encode(request_body).decode()
             if isinstance(request_body, (bytes, bytearray))
             else request_body,
-            "requestCookies": request_cookies,
             # Milliseconds, so fractions of a second work. The library rejects timeoutSeconds alongside it.
             "timeoutMilliseconds": round(request_timeout * 1000),
         }

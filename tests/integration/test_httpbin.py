@@ -141,6 +141,29 @@ class TestCookies:
 
         assert response.json() == {"cookies": {"host_only": "1", "per_request": "3"}}
 
+    def test_cleared_cookies_are_no_longer_sent(self, httpbin, session):
+        session.get(f"{httpbin.url}/cookies/set", params={"flavor": "oat"})
+        assert session.get(f"{httpbin.url}/cookies").json() == {"cookies": {"flavor": "oat"}}
+
+        session.cookies.clear()
+
+        assert session.get(f"{httpbin.url}/cookies").json() == {"cookies": {}}
+
+    def test_removed_cookie_is_no_longer_sent(self, httpbin, session):
+        session.get(f"{httpbin.url}/cookies/set", params={"flavor": "oat", "size": "big"})
+
+        del session.cookies["flavor"]
+
+        assert session.get(f"{httpbin.url}/cookies").json() == {"cookies": {"size": "big"}}
+
+    def test_cookie_deleted_by_the_server_is_no_longer_sent(self, httpbin, session):
+        session.get(f"{httpbin.url}/cookies/set", params={"flavor": "oat", "size": "big"})
+
+        session.get(f"{httpbin.url}/cookies/delete", params={"flavor": ""})
+
+        assert "flavor" not in session.cookies
+        assert session.get(f"{httpbin.url}/cookies").json() == {"cookies": {"size": "big"}}
+
 
 class TestFailures:
     def test_refused_connection_raises(self, session):

@@ -16,7 +16,9 @@ def header_values(headers: Mapping[str, str], name: str) -> list[str]:
 
 
 def sent_cookies(payload: dict) -> dict[str, str]:
-    return {cookie["name"]: cookie["value"] for cookie in payload["requestCookies"]}
+    """Cookies of the Cookie header the request was sent with."""
+    header = payload["headers"].get("Cookie", "")
+    return dict(pair.split("=", 1) for pair in header.split("; ") if pair)
 
 
 class TestUrl:
@@ -163,28 +165,74 @@ class TestCookies:
 
         session.get(URL, cookies={"token": "new"})
 
-        assert fake_lib.sent["requestCookies"] == [{"domain": "", "name": "token", "path": "/", "value": "new"}]
+        assert fake_lib.sent["headers"]["Cookie"] == "token=new"
 
-    def test_double_quotes_are_stripped_from_values(self, session, fake_lib):
-        session.get(URL, cookies={"quoted": '"abc"'})
-
-        assert sent_cookies(fake_lib.sent) == {"quoted": "abc"}
-
-    def test_expiry_is_only_sent_for_persistent_cookies(self, session, fake_lib):
-        session.cookies.set("session_only", "1")
-        session.cookies.set("persistent", "2", domain="example.com", path="/api", expires=4102444800)
+    def test_cookies_are_sent_in_a_header_and_the_library_keeps_no_jar(self, session, fake_lib):
+        session.cookies.set("a", "1")
 
         session.get(URL)
 
-        by_name = {cookie["name"]: cookie for cookie in fake_lib.sent["requestCookies"]}
-        assert by_name["session_only"] == {"domain": "", "name": "session_only", "path": "/", "value": "1"}
-        assert by_name["persistent"] == {
-            "domain": "example.com",
-            "name": "persistent",
-            "path": "/api",
-            "value": "2",
-            "expires": 4102444800,
-        }
+        assert fake_lib.sent["headers"]["Cookie"] == "a=1"
+        assert fake_lib.sent["withoutCookieJar"] is True
+        assert "requestCookies" not in fake_lib.sent
+
+    def test_no_cookie_header_without_cookies(self, session, fake_lib):
+        session.get(URL)
+
+        assert header_values(fake_lib.sent["headers"], "Cookie") == []
+
+    def test_only_cookies_for_the_domain_and_path_are_sent(self, session, fake_lib):
+        session.cookies.set("any_host", "1")
+        session.cookies.set("host", "2", domain="example.com")
+        session.cookies.set("parent_domain", "3", domain=".example.com")
+        session.cookies.set("sub_path", "4", domain="example.com", path="/path/sub")
+        session.cookies.set("other_path", "5", domain="example.com", path="/other")
+        session.cookies.set("other_host", "6", domain="other.example")
+        session.cookies.set("subdomain", "7", domain="www.example.com")
+
+        session.get(URL)
+
+        assert sent_cookies(fake_lib.sent) == {"any_host": "1", "host": "2", "parent_domain": "3"}
+
+    def test_secure_cookie_is_only_sent_over_https(self, session, fake_lib):
+        session.cookies.set("secure", "1", domain="example.com", secure=True)
+
+        session.get("http://example.com/")
+        assert sent_cookies(fake_lib.sent) == {}
+
+        session.get("https://example.com/")
+        assert sent_cookies(fake_lib.sent) == {"secure": "1"}
+
+    def test_expired_cookie_is_not_sent(self, session, fake_lib):
+        session.cookies.set("expired", "1", domain="example.com", expires=1)
+        session.cookies.set("persistent", "2", domain="example.com", expires=4102444800)
+
+        session.get(URL)
+
+        assert sent_cookies(fake_lib.sent) == {"persistent": "2"}
+
+    def test_cookies_cleared_from_the_jar_are_not_sent(self, session, fake_lib):
+        fake_lib.reply_with(headers={"Set-Cookie": ["a=1; Path=/"]})
+        session.get(URL)
+        session.get(URL)
+        assert sent_cookies(fake_lib.sent) == {"a": "1"}
+
+        session.cookies.clear()
+        session.get(URL)
+
+        assert sent_cookies(fake_lib.sent) == {}
+
+    def test_cookie_header_passed_in_is_sent_before_the_jar_cookies(self, session, fake_lib):
+        session.cookies.set("from_jar", "1")
+
+        session.get(URL, headers={"cookie": "from_header=2"})
+
+        assert header_values(fake_lib.sent["headers"], "Cookie") == ["from_header=2; from_jar=1"]
+
+    def test_quoted_value_is_sent_as_is(self, session, fake_lib):
+        session.get(URL, cookies={"quoted": '"abc"'})
+
+        assert sent_cookies(fake_lib.sent) == {"quoted": '"abc"'}
 
     def test_cookies_from_the_response_are_kept_for_the_next_request(self, session, fake_lib):
         fake_lib.reply_with(headers={"Set-Cookie": ["a=1; Path=/", "b=2; Path=/"]})
