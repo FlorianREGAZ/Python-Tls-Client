@@ -53,7 +53,6 @@ class TestRequestsCookieJar:
             jar["id"]
         assert jar.get("id", path="/api") == "api"
 
-    @pytest.mark.xfail(reason="_find_no_duplicates treats an empty value as a missing cookie")
     def test_cookie_with_empty_value_is_readable(self):
         jar = cookiejar_from_dict({"consent": ""})
 
@@ -79,7 +78,6 @@ class TestRequestsCookieJar:
         assert sorted(jar.list_domains()) == ["a.example", "b.example"]
         assert sorted(jar.list_paths()) == ["/", "/api"]
 
-    @pytest.mark.xfail(reason="multiple_domains() looks for a repeated domain instead of a second distinct one")
     def test_multiple_domains(self):
         jar = RequestsCookieJar()
         jar.set("a", "1", domain="a.example")

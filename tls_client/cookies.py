@@ -219,12 +219,7 @@ class RequestsCookieJar(CookieJar, MutableMapping[str, str]):  # type: ignore[mi
 
         :rtype: bool
         """
-        domains: list[str] = []
-        for cookie in iter(self):
-            if cookie.domain is not None and cookie.domain in domains:
-                return True
-            domains.append(cookie.domain)
-        return False  # there is only one domain in jar
+        return len({cookie.domain for cookie in iter(self)}) > 1
 
     def get_dict(self, domain: str | None = None, path: str | None = None) -> dict[str, str | None]:
         """Takes as an argument an optional domain and path and returns a plain
@@ -314,6 +309,7 @@ class RequestsCookieJar(CookieJar, MutableMapping[str, str]):  # type: ignore[mi
             that match name and optionally domain and path
         :return: cookie.value
         """
+        found = False
         toReturn = None
         for cookie in iter(self):
             if (
@@ -321,13 +317,15 @@ class RequestsCookieJar(CookieJar, MutableMapping[str, str]):  # type: ignore[mi
                 and (domain is None or cookie.domain == domain)
                 and (path is None or cookie.path == path)
             ):
-                if toReturn is not None:
+                if found:
                     # if there are multiple cookies that meet passed in criteria
                     raise CookieConflictError(f"There are multiple cookies with name, {name!r}")
                 # we will eventually return this as long as no cookie conflict
+                found = True
                 toReturn = cookie.value
 
-        if toReturn:
+        # An empty value is a value, only a cookie without one (Set-Cookie: name) counts as missing
+        if toReturn is not None:
             return toReturn
         raise KeyError(f"name={name!r}, domain={domain!r}, path={path!r}")
 
