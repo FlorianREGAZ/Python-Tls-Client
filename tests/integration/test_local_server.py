@@ -24,6 +24,8 @@ PNG = base64.b64decode(
 LARGE = os.urandom(8 * 1024 * 1024)
 # How long /slow takes to answer.
 SLOW_SECONDS = 0.6
+# Go reports a timeout as "Client.Timeout exceeded" or "context deadline exceeded", depending on where it hits.
+TIMEOUT = "Timeout exceeded|deadline exceeded"
 
 # Path -> (Content-Type, body)
 BODIES = {
@@ -166,7 +168,7 @@ class TestHeaders:
 class TestTimeout:
     @pytest.mark.parametrize("kwarg", ["timeout", "timeout_seconds"])
     def test_fractional_timeout_is_applied(self, server_url, session, kwarg):
-        with pytest.raises(TLSClientException, match="Timeout exceeded"):
+        with pytest.raises(TLSClientException, match=TIMEOUT):
             session.get(f"{server_url}/slow", **{kwarg: SLOW_SECONDS / 3})
 
     def test_response_within_the_timeout_arrives(self, server_url, session):
@@ -175,7 +177,7 @@ class TestTimeout:
     def test_fractional_session_timeout_is_applied(self, server_url, session):
         session.timeout_seconds = SLOW_SECONDS / 3
 
-        with pytest.raises(TLSClientException, match="Timeout exceeded"):
+        with pytest.raises(TLSClientException, match=TIMEOUT):
             session.get(f"{server_url}/slow")
 
 

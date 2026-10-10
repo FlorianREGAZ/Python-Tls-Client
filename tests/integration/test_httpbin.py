@@ -11,6 +11,9 @@ from tls_client.exceptions import TLSClientException, TooManyRedirects
 
 pytestmark = pytest.mark.integration
 
+# Go reports a timeout as "Client.Timeout exceeded" or "context deadline exceeded", depending on where it hits.
+TIMEOUT = "Timeout exceeded|deadline exceeded"
+
 
 @pytest.fixture
 def session() -> Iterator[Session]:
@@ -241,14 +244,14 @@ class TestFailures:
     def test_session_timeout_raises(self, httpbin, session):
         session.timeout_seconds = 1
 
-        with pytest.raises(TLSClientException, match="Timeout exceeded"):
+        with pytest.raises(TLSClientException, match=TIMEOUT):
             session.get(f"{httpbin.url}/delay/2")
 
     @pytest.mark.parametrize("kwarg", ["timeout", "timeout_seconds"])
     def test_request_timeout_applies_after_the_first_request(self, httpbin, session, kwarg):
         session.get(f"{httpbin.url}/get")
 
-        with pytest.raises(TLSClientException, match="Timeout exceeded"):
+        with pytest.raises(TLSClientException, match=TIMEOUT):
             session.get(f"{httpbin.url}/delay/2", **{kwarg: 1})
 
 
