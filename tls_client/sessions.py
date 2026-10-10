@@ -21,7 +21,7 @@ from .structures import CaseInsensitiveDict
 _Data: TypeAlias = str | bytes | Mapping[str, Any] | list[tuple[str, Any]]
 # JSON body: dicts and lists are serialized, a str is sent as-is.
 _Json: TypeAlias = dict[str, Any] | list[Any] | str
-# Either a proxy URL, or a dict whose "http" entry is used.
+# Either a proxy URL, or a dict whose "http" entry is used, or its "https" entry if it has no "http" one.
 _Proxy: TypeAlias = dict[str, str] | str
 
 # Statuses followed with allow_redirects, if the response has a Location header
@@ -91,6 +91,10 @@ class Session:
             )
 
         self._session_id = str(uuid.uuid4())
+        # The library sets a native session's timeout and certificate verification when the session sends its first
+        # request and keeps them. So each combination of the two gets a native session of its own, whose ID is made
+        # from self._session_id and the two values. These are the IDs sent so far, which close() destroys.
+        self._native_session_ids: set[str] = set()
         # --- Standard Settings ----------------------------------------------------------------------------------------
 
         # Case-insensitive dictionary of headers, send on each request
@@ -346,17 +350,20 @@ class Session:
         self.close()
 
     def close(self) -> str:
-        destroy_session_payload = {"sessionId": self._session_id}
+        """Destroys the native sessions of this session and returns the library's reply for the last one."""
+        destroy_session_response_string = ""
+        for session_id in sorted(self._native_session_ids) or [self._session_id]:
+            destroy_session_payload = {"sessionId": session_id}
 
-        destroy_session_response = destroySession(dumps(destroy_session_payload).encode("utf-8"))
-        # we dereference the pointer to a byte array
-        destroy_session_response_bytes = ctypes.string_at(destroy_session_response)
-        # convert our byte array to a string (tls client returns json)
-        destroy_session_response_string = destroy_session_response_bytes.decode("utf-8")
-        # convert response string to json
-        destroy_session_response_object = loads(destroy_session_response_string)
+            destroy_session_response = destroySession(dumps(destroy_session_payload).encode("utf-8"))
+            # we dereference the pointer to a byte array
+            destroy_session_response_bytes = ctypes.string_at(destroy_session_response)
+            # convert our byte array to a string (tls client returns json)
+            destroy_session_response_string = destroy_session_response_bytes.decode("utf-8")
+            # convert response string to json
+            destroy_session_response_object = loads(destroy_session_response_string)
 
-        freeMemory(destroy_session_response_object["id"].encode("utf-8"))
+            freeMemory(destroy_session_response_object["id"].encode("utf-8"))
 
         return destroy_session_response_string
 
@@ -379,16 +386,17 @@ class Session:
     ) -> Response:
         """Sends a request and returns its Response.
 
+        params are added to the query string after self.params, and after any query the URL already has.
+
         timeout is how many seconds (int or float) to wait for the response, like in requests. timeout_seconds is
         the older name for it; passing both raises ValueError. Without either, self.timeout_seconds applies.
-
-        The native library sets a session's timeout when the session sends its first request and keeps it, so a
-        different timeout on a later request of the same session has no effect. Use a new Session for that.
         """
         # --- URL ------------------------------------------------------------------------------------------------------
-        # Prepare URL - add params to url
-        if params is not None:
-            url = f"{url}?{urllib.parse.urlencode(params, doseq=True)}"
+        # Prepare URL - add params to url. A parameter passed in replaces the session parameter of the same name.
+        query = urllib.parse.urlencode({**self.params, **(params or {})}, doseq=True)
+        if query:
+            parts = urllib.parse.urlsplit(url)
+            url = urllib.parse.urlunsplit(parts._replace(query=f"{parts.query}&{query}" if parts.query else query))
 
         # --- Request Body ---------------------------------------------------------------------------------------------
         # Prepare request body - build request body
@@ -442,8 +450,9 @@ class Session:
         # --- Proxy ----------------------------------------------------------------------------------------------------
         proxy = proxy or self.proxies
 
-        if isinstance(proxy, dict) and "http" in proxy:
-            proxy_url = proxy["http"]
+        if isinstance(proxy, dict):
+            # The "http" entry is used for every URL, https ones included
+            proxy_url = proxy.get("http") or proxy.get("https") or ""
         elif isinstance(proxy, str):
             proxy_url = proxy
         else:
@@ -455,6 +464,11 @@ class Session:
             raise ValueError("Pass either timeout or timeout_seconds, not both")
 
         request_timeout = timeout or timeout_seconds or self.timeout_seconds
+        timeout_milliseconds = round(request_timeout * 1000)
+
+        # The native session for this timeout and certificate verification, see self._native_session_ids
+        session_id = f"{self._session_id}-{timeout_milliseconds}ms{'-insecure' if insecure_skip_verify else ''}"
+        self._native_session_ids.add(session_id)
 
         # --- Certificate pinning --------------------------------------------------------------------------------------
         # pins a certificate so that it restricts which certificates are considered valid
@@ -464,7 +478,7 @@ class Session:
         # --- Request --------------------------------------------------------------------------------------------------
         # Settings shared by every request of a redirect chain. The URL, method, headers and body are set per request.
         request_payload: dict[str, Any] = {
-            "sessionId": self._session_id,
+            "sessionId": session_id,
             # Redirects are followed below, so that the cookies set on every hop end up in self.cookies.
             "followRedirects": False,
             # Cookies come from self.cookies only. Without this, the library also keeps the cookies of every response
@@ -480,7 +494,7 @@ class Session:
             "additionalDecode": self.additional_decode,
             "proxyUrl": proxy_url,
             # Milliseconds, so fractions of a second work. The library rejects timeoutSeconds alongside it.
-            "timeoutMilliseconds": round(request_timeout * 1000),
+            "timeoutMilliseconds": timeout_milliseconds,
         }
         if certificate_pinning:
             request_payload["certificatePinningHosts"] = certificate_pinning
