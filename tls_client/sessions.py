@@ -1,6 +1,6 @@
 from .cffi import request, freeMemory, destroySession
 from .cookies import cookiejar_from_dict, merge_cookies, extract_cookies_to_jar
-from .exceptions import TLSClientExeption
+from .exceptions import TLSClientException
 from .response import build_response, Response
 from .settings import ClientIdentifiers
 from .structures import CaseInsensitiveDict
@@ -439,7 +439,7 @@ class Session:
         # --- Response -------------------------------------------------------------------------------------------------
         # Error handling
         if response_object["status"] == 0:
-            raise TLSClientExeption(response_object["body"])
+            raise TLSClientException(response_object["body"])
         # Set response cookies
         response_cookie_jar = extract_cookies_to_jar(
             request_url=url,
