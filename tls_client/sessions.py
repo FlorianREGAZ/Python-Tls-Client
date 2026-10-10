@@ -2,8 +2,10 @@ import base64
 import ctypes
 import urllib.parse
 import uuid
+from collections.abc import Mapping
+from http.cookiejar import CookieJar
 from json import dumps, loads
-from typing import Any, Optional
+from typing import Any, TypeAlias
 
 from .__version__ import __version__
 from .cffi import destroySession, freeMemory, request
@@ -13,11 +15,18 @@ from .response import Response, build_response
 from .settings import ClientIdentifiers
 from .structures import CaseInsensitiveDict
 
+# Request body: str and bytes are sent as-is, a mapping is form-encoded.
+_Data: TypeAlias = str | bytes | Mapping[str, Any]
+# JSON body: dicts and lists are serialized, a str is sent as-is.
+_Json: TypeAlias = dict[str, Any] | list[Any] | str
+# Either a proxy URL, or a dict whose "http" entry is used.
+_Proxy: TypeAlias = dict[str, str] | str
+
 
 class Session:
     def __init__(
         self,
-        client_identifier: ClientIdentifiers = "chrome_120",
+        client_identifier: ClientIdentifiers | None = "chrome_120",
         ja3_string: str | None = None,
         h2_settings: dict[str, int] | None = None,
         h2_settings_order: list[str] | None = None,
@@ -29,20 +38,20 @@ class Session:
         additional_decode: str | None = None,
         pseudo_header_order: list[str] | None = None,
         connection_flow: int | None = None,
-        priority_frames: list | None = None,
+        priority_frames: list[dict[str, Any]] | None = None,
         header_order: list[str] | None = None,
-        header_priority: list[str] | None = None,
-        random_tls_extension_order: Optional = False,
-        force_http1: Optional = False,
-        catch_panics: Optional = False,
-        debug: Optional = False,
+        header_priority: dict[str, Any] | None = None,
+        random_tls_extension_order: bool = False,
+        force_http1: bool = False,
+        catch_panics: bool = False,
+        debug: bool = False,
         certificate_pinning: dict[str, list[str]] | None = None,
     ) -> None:
         self._session_id = str(uuid.uuid4())
         # --- Standard Settings ----------------------------------------------------------------------------------------
 
         # Case-insensitive dictionary of headers, send on each request
-        self.headers = CaseInsensitiveDict(
+        self.headers: CaseInsensitiveDict[str] = CaseInsensitiveDict(
             {
                 "User-Agent": f"tls-client/{__version__}",
                 "Accept-Encoding": "gzip, deflate, br",
@@ -56,11 +65,11 @@ class Session:
         #     "http": "http://user:pass@ip:port",
         #     "https": "http://user:pass@ip:port"
         # }
-        self.proxies = {}
+        self.proxies: _Proxy = {}
 
         # Dictionary of querystring data to attach to each request. The dictionary values may be lists for representing
         # multivalued query parameters.
-        self.params = {}
+        self.params: dict[str, Any] = {}
 
         # CookieJar containing all currently outstanding cookies set on this session
         self.cookies = cookiejar_from_dict({})
@@ -277,10 +286,10 @@ class Session:
         # debugging
         self.debug = debug
 
-    def __enter__(self):
+    def __enter__(self) -> "Session":
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: object) -> None:
         self.close()
 
     def close(self) -> str:
@@ -302,16 +311,16 @@ class Session:
         self,
         method: str,
         url: str,
-        params: dict | None = None,  # Optional[dict[str, str]]
-        data: str | dict | None = None,
-        headers: dict | None = None,  # Optional[dict[str, str]]
+        params: Mapping[str, Any] | None = None,
+        data: _Data | None = None,
+        headers: Mapping[str, str | None] | None = None,
         header_order: list[str] | None = None,
-        cookies: dict | None = None,  # Optional[dict[str, str]]
-        json: dict | None = None,  # Optional[dict]
-        allow_redirects: bool | None = False,
-        insecure_skip_verify: bool | None = False,
+        cookies: dict[str, str] | CookieJar | None = None,
+        json: _Json | None = None,
+        allow_redirects: bool = False,
+        insecure_skip_verify: bool = False,
         timeout_seconds: int | None = None,
-        proxy: dict | None = None,  # Optional[dict[str, str]]
+        proxy: _Proxy | None = None,
     ) -> Response:
         # --- URL ------------------------------------------------------------------------------------------------------
         # Prepare URL - add params to url
@@ -321,28 +330,29 @@ class Session:
         # --- Request Body ---------------------------------------------------------------------------------------------
         # Prepare request body - build request body
         # Data has priority. JSON is only used if data is None.
+        request_body: str | bytes | None
+        content_type: str | None
         if data is None and json is not None:
-            if type(json) in [dict, list]:
-                json = dumps(json)
-            request_body = json
+            request_body = dumps(json) if isinstance(json, (dict, list)) else json
             content_type = "application/json"
-        elif data is not None and type(data) not in [str, bytes]:
-            request_body = urllib.parse.urlencode(data, doseq=True)
-            content_type = "application/x-www-form-urlencoded"
-        else:
+        elif data is None or isinstance(data, (str, bytes)):
             request_body = data
             content_type = None
+        else:
+            request_body = urllib.parse.urlencode(data, doseq=True)
+            content_type = "application/x-www-form-urlencoded"
         # set content type if it isn't set
         if content_type is not None and "content-type" not in self.headers:
             self.headers["Content-Type"] = content_type
 
         # --- Headers --------------------------------------------------------------------------------------------------
+        request_headers: Mapping[str, str | None]
         if self.headers is None:
-            headers = CaseInsensitiveDict(headers)
+            request_headers = CaseInsensitiveDict(headers)
         elif headers is None:
-            headers = self.headers
+            request_headers = self.headers
         else:
-            merged_headers = CaseInsensitiveDict(self.headers)
+            merged_headers: CaseInsensitiveDict[str | None] = CaseInsensitiveDict(self.headers)
             merged_headers.update(headers)
 
             # Remove items, where the key or value is set to None.
@@ -350,7 +360,7 @@ class Session:
             for key in none_keys:
                 del merged_headers[key]
 
-            headers = merged_headers
+            request_headers = merged_headers
 
         # Ability to overwrite self.header_order for flexibility
         request_header_order = self.header_order
@@ -358,9 +368,8 @@ class Session:
             request_header_order = header_order
 
         # --- Cookies --------------------------------------------------------------------------------------------------
-        cookies = cookies or {}
         # Merge with session cookies
-        cookies = merge_cookies(self.cookies, cookies)
+        cookie_jar = merge_cookies(self.cookies, cookies or {})
         # turn cookie jar into dict
         # in the cookie value the " gets removed, because the fhttp library in golang doesn't accept the character
         # expires is omitted for session cookies, because the tls client parses null as 1970 and drops the cookie
@@ -369,21 +378,21 @@ class Session:
                 "domain": c.domain,
                 "name": c.name,
                 "path": c.path,
-                "value": c.value.replace('"', ""),
+                "value": (c.value or "").replace('"', ""),
                 **({"expires": c.expires} if c.expires is not None else {}),
             }
-            for c in cookies
+            for c in cookie_jar
         ]
 
         # --- Proxy ----------------------------------------------------------------------------------------------------
         proxy = proxy or self.proxies
 
-        if type(proxy) is dict and "http" in proxy:
-            proxy = proxy["http"]
-        elif type(proxy) is str:
-            proxy = proxy
+        if isinstance(proxy, dict) and "http" in proxy:
+            proxy_url = proxy["http"]
+        elif isinstance(proxy, str):
+            proxy_url = proxy
         else:
-            proxy = ""
+            proxy_url = ""
 
         # --- Timeout --------------------------------------------------------------------------------------------------
         # maximum time to wait for a response
@@ -397,21 +406,23 @@ class Session:
 
         # --- Request --------------------------------------------------------------------------------------------------
         is_byte_request = isinstance(request_body, (bytes, bytearray))
-        request_payload = {
+        request_payload: dict[str, Any] = {
             "sessionId": self._session_id,
             "followRedirects": allow_redirects,
             "forceHttp1": self.force_http1,
             "withDebug": self.debug,
             "catchPanics": self.catch_panics,
-            "headers": dict(headers),
+            "headers": dict(request_headers),
             "headerOrder": request_header_order,
             "insecureSkipVerify": insecure_skip_verify,
             "isByteRequest": is_byte_request,
             "additionalDecode": self.additional_decode,
-            "proxyUrl": proxy,
+            "proxyUrl": proxy_url,
             "requestUrl": url,
             "requestMethod": method,
-            "requestBody": base64.b64encode(request_body).decode() if is_byte_request else request_body,
+            "requestBody": base64.b64encode(request_body).decode()
+            if isinstance(request_body, (bytes, bytearray))
+            else request_body,
             "requestCookies": request_cookies,
             "timeoutSeconds": timeout_seconds,
         }
@@ -452,7 +463,10 @@ class Session:
             raise TLSClientException(response_object["body"])
         # Set response cookies
         response_cookie_jar = extract_cookies_to_jar(
-            request_url=url, request_headers=headers, cookie_jar=cookies, response_headers=response_object["headers"]
+            request_url=url,
+            request_headers=request_headers,
+            cookie_jar=cookie_jar,
+            response_headers=response_object["headers"],
         )
         # build response class
         return build_response(response_object, response_cookie_jar)
@@ -469,15 +483,15 @@ class Session:
         """Sends a HEAD request"""
         return self.execute_request(method="HEAD", url=url, **kwargs)
 
-    def post(self, url: str, data: str | dict | None = None, json: dict | None = None, **kwargs: Any) -> Response:
+    def post(self, url: str, data: _Data | None = None, json: _Json | None = None, **kwargs: Any) -> Response:
         """Sends a POST request"""
         return self.execute_request(method="POST", url=url, data=data, json=json, **kwargs)
 
-    def put(self, url: str, data: str | dict | None = None, json: dict | None = None, **kwargs: Any) -> Response:
+    def put(self, url: str, data: _Data | None = None, json: _Json | None = None, **kwargs: Any) -> Response:
         """Sends a PUT request"""
         return self.execute_request(method="PUT", url=url, data=data, json=json, **kwargs)
 
-    def patch(self, url: str, data: str | dict | None = None, json: dict | None = None, **kwargs: Any) -> Response:
+    def patch(self, url: str, data: _Data | None = None, json: _Json | None = None, **kwargs: Any) -> Response:
         """Sends a PATCH request"""
         return self.execute_request(method="PATCH", url=url, data=data, json=json, **kwargs)
 
