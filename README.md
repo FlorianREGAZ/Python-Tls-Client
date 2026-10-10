@@ -125,6 +125,15 @@ Windows:
 --add-binary '{path_to_library}/tls_client/dependencies/tls-client-64.dll;tls_client/dependencies'
 ```
 
+# Running the tests
+```
+uv run pytest                                          # unit + local httpbin integration tests, with coverage
+uv run pytest -m "not integration and not network"     # unit tests only, fully offline
+uv run pytest -m network --no-cov                      # fingerprint checks against tls.peet.ws (needs internet)
+```
+Pass `--no-cov` when running a subset of the tests, otherwise the coverage threshold fails the run.
+Tests marked `xfail` describe known bugs; they start failing as soon as the bug is fixed, so the marker can be removed.
+
 # Acknowledgements
 Big shout out to [Bogdanfinn](https://github.com/bogdanfinn) for open sourcing his [tls-client](https://github.com/bogdanfinn/tls-client) in Golang.
 Also I wanted to keep the syntax as similar as possible to [requests](https://github.com/psf/requests), as most people use it and are familiar with it!
