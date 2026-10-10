@@ -13,11 +13,11 @@ Example 1 - Preset:
 ```python
 import tls_client
 
-# `client_identifier` picks the browser profile to impersonate, e.g. chrome_120, firefox_120, safari_ios_17_0 or
+# `client_identifier` picks the browser profile to impersonate, e.g. chrome_152, firefox_148, safari_ios_26_0 or
 # okhttp4_android_13. Every supported name is listed in tls_client/settings.py; unknown names raise a ValueError.
 
 session = tls_client.Session(
-    client_identifier="chrome_112",
+    client_identifier="chrome_152",
     random_tls_extension_order=True
 )
 
@@ -99,13 +99,83 @@ import tls_client
 
 async def main():
     # Takes the same arguments as tls_client.Session.
-    async with tls_client.AsyncSession(client_identifier="chrome_120") as session:
+    async with tls_client.AsyncSession(client_identifier="chrome_152") as session:
         responses = await asyncio.gather(
-            *(session.get(f"https://www.example.com/{i}") for i in range(10))
+            *(session.get(f"https://httpbin.org/get?page={i}") for i in range(10))
         )
         print([res.status_code for res in responses])
 
 asyncio.run(main())
+```
+
+Example 4 - File upload:
+```python
+import tls_client
+
+session = tls_client.Session(client_identifier="chrome_152")
+
+with open("report.pdf", "rb") as f:
+    res = session.post(
+        "https://www.example.com/upload",
+        data={"title": "Report"},
+        files={"file": f, "notes": ("notes.txt", "some text", "text/plain")},
+    )
+```
+
+Example 5 - Redirects and cookies:
+```python
+import tls_client
+
+session = tls_client.Session(client_identifier="chrome_152")
+
+# Redirects are only followed with allow_redirects=True.
+res = session.get("https://httpbin.org/cookies/set?flavour=chocolate", allow_redirects=True)
+print(res.url)  # https://httpbin.org/cookies
+print([r.status_code for r in res.history])  # [302]
+
+# Cookies set on any hop are kept in the session and sent with later requests.
+print(session.cookies.get_dict())  # {'flavour': 'chocolate'}
+
+# Cookies removed from the session are no longer sent.
+session.cookies.clear()
+print(session.get("https://httpbin.org/cookies").json())  # {'cookies': {}}
+```
+
+Example 6 - Downloads and encodings:
+```python
+import tls_client
+
+session = tls_client.Session(client_identifier="chrome_152")
+
+# .content is the exact bytes the server sent. timeout is in seconds and can be a float.
+res = session.get("https://httpbin.org/image/png", timeout=10)
+with open("image.png", "wb") as f:
+    f.write(res.content)
+
+# .text is decoded with the charset from the Content-Type header or the page itself.
+# Set .encoding when a page declares the wrong one.
+res = session.get("https://httpbin.org/html", timeout=2.5)
+res.encoding = "iso-8859-1"
+print(res.text[:100])
+```
+
+Example 7 - Multiprocessing:
+```python
+import multiprocessing
+import tls_client
+
+def fetch(url):
+    session = tls_client.Session(client_identifier="chrome_152")
+    return session.get(url).status_code
+
+if __name__ == "__main__":
+    session = tls_client.Session(client_identifier="chrome_152")
+    print(session.get("https://www.example.com/").status_code)
+
+    # The parent has made a request, so the native library is loaded and a fork()ed child would hang.
+    # Use "spawn" or "forkserver" instead.
+    with multiprocessing.get_context("spawn").Pool(4) as pool:
+        print(pool.map(fetch, ["https://www.example.com/"] * 8))
 ```
 
 # Pyinstaller / Pyarmor
