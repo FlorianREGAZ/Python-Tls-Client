@@ -95,13 +95,19 @@ class TestBody:
 
         assert header_values(fake_lib.sent["headers"], "Content-Type") == ["text/plain"]
 
-    @pytest.mark.xfail(reason="the inferred Content-Type is written into session.headers and sticks to later requests")
     def test_inferred_content_type_applies_to_one_request_only(self, session, fake_lib):
         session.post(URL, json={"a": 1})
         session.post(URL, data={"a": "1"})
-
         assert header_values(fake_lib.sent["headers"], "Content-Type") == ["application/x-www-form-urlencoded"]
+
+        session.post(URL, data="raw")
+        assert header_values(fake_lib.sent["headers"], "Content-Type") == []
         assert "Content-Type" not in session.headers
+
+    def test_content_type_set_to_none_suppresses_the_inferred_one(self, session, fake_lib):
+        session.post(URL, json={"a": 1}, headers={"Content-Type": None})
+
+        assert header_values(fake_lib.sent["headers"], "Content-Type") == []
 
     @pytest.mark.parametrize("method", ["post", "put", "patch"])
     def test_body_verbs_take_data_as_second_positional_argument(self, session, fake_lib, method):

@@ -115,3 +115,24 @@ class TestHeaders:
 
         assert response.headers[name] == "yes"
         assert response.headers["content-type"] == "application/octet-stream"
+
+    def test_inferred_content_type_does_not_leak_into_later_requests(self, server_url, session):
+        json_post = session.post(f"{server_url}/headers", json={"a": 1}).json()
+        form_post = session.post(f"{server_url}/headers", data={"a": "1"}).json()
+        get = session.get(f"{server_url}/headers").json()
+
+        assert json_post["content-type"] == "application/json"
+        assert form_post["content-type"] == "application/x-www-form-urlencoded"
+        assert "content-type" not in get
+        assert "Content-Type" not in session.headers
+
+    def test_content_type_from_the_session_or_the_request_is_kept(self, server_url, session):
+        session.headers["content-type"] = "application/vnd.api+json"
+
+        from_session = session.post(f"{server_url}/headers", json={"a": 1}).json()
+        from_request = session.post(
+            f"{server_url}/headers", json={"a": 1}, headers={"CONTENT-TYPE": "text/plain"}
+        ).json()
+
+        assert from_session["content-type"] == "application/vnd.api+json"
+        assert from_request["content-type"] == "text/plain"

@@ -364,26 +364,20 @@ class Session:
         else:
             request_body = urllib.parse.urlencode(data, doseq=True)
             content_type = "application/x-www-form-urlencoded"
-        # set content type if it isn't set
-        if content_type is not None and "content-type" not in self.headers:
-            self.headers["Content-Type"] = content_type
-
         # --- Headers --------------------------------------------------------------------------------------------------
-        request_headers: Mapping[str, str | None]
-        if self.headers is None:
-            request_headers = CaseInsensitiveDict(headers)
-        elif headers is None:
-            request_headers = self.headers
-        else:
-            merged_headers: CaseInsensitiveDict[str | None] = CaseInsensitiveDict(self.headers)
-            merged_headers.update(headers)
+        # Merge into a copy, so nothing set for this request sticks to self.headers.
+        request_headers: CaseInsensitiveDict[str | None] = CaseInsensitiveDict(self.headers)
+        if headers is not None:
+            request_headers.update(headers)
 
-            # Remove items, where the key or value is set to None.
-            none_keys = [k for (k, v) in merged_headers.items() if v is None or k is None]
-            for key in none_keys:
-                del merged_headers[key]
+        # set content type if neither the session nor the request set one (setting it to None sends none)
+        if content_type is not None and "content-type" not in request_headers:
+            request_headers["Content-Type"] = content_type
 
-            request_headers = merged_headers
+        # Remove items, where the key or value is set to None.
+        none_keys = [k for (k, v) in request_headers.items() if v is None or k is None]
+        for key in none_keys:
+            del request_headers[key]
 
         # Ability to overwrite self.header_order for flexibility
         request_header_order = self.header_order
