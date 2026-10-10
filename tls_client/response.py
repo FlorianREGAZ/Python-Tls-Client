@@ -1,5 +1,4 @@
 import json
-from collections.abc import MutableMapping
 from typing import Any
 
 from .cookies import RequestsCookieJar, cookiejar_from_dict
@@ -19,8 +18,8 @@ class Response:
         # String of responded HTTP Body.
         self.text: str = ""
 
-        # Dictionary of Response Headers. Headers sent more than once map to a list of values.
-        self.headers: MutableMapping[str, str | list[str]] = CaseInsensitiveDict()
+        # Case-insensitive dictionary of Response Headers. Headers sent more than once map to a list of values.
+        self.headers: CaseInsensitiveDict[str | list[str]] = CaseInsensitiveDict()
 
         # A CookieJar of Cookies the server sent back.
         self.cookies = cookiejar_from_dict({})
@@ -51,7 +50,7 @@ def build_response(res: dict[str, Any], res_cookies: RequestsCookieJar) -> Respo
     # Add status code
     response.status_code = res["status"]
     # Add headers
-    response_headers: dict[str, str | list[str]] = {}
+    response_headers: CaseInsensitiveDict[str | list[str]] = CaseInsensitiveDict()
     if res["headers"] is not None:
         for header_key, header_value in res["headers"].items():
             if len(header_value) == 1:

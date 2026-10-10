@@ -40,8 +40,10 @@ def test_null_headers_become_an_empty_mapping():
     assert dict(response.headers) == {}
 
 
-@pytest.mark.xfail(reason="build_response replaces the CaseInsensitiveDict with a plain dict")
-def test_header_lookup_ignores_case():
+@pytest.mark.parametrize("name", ["Content-Type", "content-type", "CONTENT-TYPE"])
+def test_header_lookup_ignores_case(name):
     response = build_response(library_reply(headers={"Content-Type": ["text/html"]}), cookiejar_from_dict({}))
 
-    assert response.headers["content-type"] == "text/html"
+    assert response.headers[name] == "text/html"
+    assert response.headers.get(name) == "text/html"
+    assert name in response.headers
