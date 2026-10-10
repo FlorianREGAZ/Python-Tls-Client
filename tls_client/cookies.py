@@ -444,6 +444,6 @@ def extract_cookies_to_jar(
     res = MockResponse(http_message)
     # extract_cookies only needs the duck-typed subset of HTTPResponse and Request the mocks implement
     response_cookie_jar.extract_cookies(res, req)  # type: ignore[arg-type]
-
-    merge_cookies(cookie_jar, response_cookie_jar)
+    # Extracted into the session jar too rather than merged, so a cookie the server expires is removed from it
+    cookie_jar.extract_cookies(res, req)  # type: ignore[arg-type]
     return response_cookie_jar
