@@ -27,19 +27,34 @@ class TestUrl:
 
         assert fake_lib.sent["requestUrl"] == f"{URL}?q=a+b&tag=x&tag=y"
 
-    @pytest.mark.xfail(reason="params are appended after a second '?' instead of extending the existing query")
     def test_params_extend_an_existing_query_string(self, session, fake_lib):
         session.get(f"{URL}?page=2", params={"q": "x"})
 
         assert fake_lib.sent["requestUrl"] == f"{URL}?page=2&q=x"
 
-    @pytest.mark.xfail(reason="session.params is never read when building a request")
+    def test_params_go_before_the_fragment(self, session, fake_lib):
+        session.get(f"{URL}#top", params={"q": "x"})
+
+        assert fake_lib.sent["requestUrl"] == f"{URL}?q=x#top"
+
+    def test_empty_params_leave_the_url_alone(self, session, fake_lib):
+        session.get(URL, params={})
+
+        assert fake_lib.sent["requestUrl"] == URL
+
     def test_session_params_are_sent_with_every_request(self, session, fake_lib):
         session.params = {"api_key": "k"}
 
         session.get(URL)
 
         assert fake_lib.sent["requestUrl"] == f"{URL}?api_key=k"
+
+    def test_request_params_replace_session_params_of_the_same_name(self, session, fake_lib):
+        session.params = {"api_key": "k", "lang": "en"}
+
+        session.get(URL, params={"lang": "de", "q": "x"})
+
+        assert fake_lib.sent["requestUrl"] == f"{URL}?api_key=k&lang=de&q=x"
 
 
 class TestBody:
@@ -449,6 +464,7 @@ class TestTransportOptions:
         [
             ("http://user:pass@proxy:8080", "http://user:pass@proxy:8080"),
             ({"http": "http://proxy:8080", "https": "http://ignored:8080"}, "http://proxy:8080"),
+            ({"https": "http://proxy:8080"}, "http://proxy:8080"),
             ({}, ""),
         ],
     )
@@ -594,6 +610,23 @@ class TestLifecycle:
         ids = [payload["sessionId"] for payload in fake_lib.payloads]
         assert ids[0] == ids[1]
         assert ids[1] != ids[2]
+
+    @pytest.mark.parametrize(
+        "kwargs", [{"timeout": 5}, {"timeout_seconds": 5}, {"insecure_skip_verify": True}], ids=lambda k: next(iter(k))
+    )
+    def test_request_with_other_transport_settings_gets_a_native_session_of_its_own(self, fake_lib, kwargs):
+        # The library keeps the timeout and certificate verification of a native session's first request
+        with Session() as session:
+            session.get(URL)
+            session.get(URL, **kwargs)
+            session.get(URL, **kwargs)
+            session.get(URL)
+
+        ids = [payload["sessionId"] for payload in fake_lib.payloads]
+        assert ids[0] != ids[1]
+        assert ids[1] == ids[2]
+        assert ids[3] == ids[0]
+        assert sorted(fake_lib.destroyed_session_ids) == sorted({ids[0], ids[1]})
 
     def test_library_error_is_raised_as_tls_client_exception(self, session, fake_lib):
         fake_lib.reply_with(status=0, body="failed to do request: dial tcp: connection refused")
