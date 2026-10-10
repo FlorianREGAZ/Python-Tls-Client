@@ -39,3 +39,28 @@ path = "tls_client/__version__.py"
 
 [tool.hatch.build.targets.sdist]
 include = ["/tls_client", "/README.md", "/LICENSE"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.0",
+]
+
+[tool.ruff]
+line-length = 120
+# Keep README examples laid out by hand.
+extend-exclude = ["*.md"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "RUF", # ruff-specific rules
+]
+# Long strings and comments are left alone; the formatter handles code.
+ignore = ["E501"]
