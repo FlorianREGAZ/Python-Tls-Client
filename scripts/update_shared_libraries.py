@@ -12,7 +12,7 @@ github_repo_filenames = [
     # Linux
     f"tls-client-linux-alpine-amd64-{shared_library_version}.so",
     f"tls-client-linux-ubuntu-amd64-{shared_library_version}.so",
-    f"tls-client-linux-arm64-{shared_library_version}.so"
+    f"tls-client-linux-arm64-{shared_library_version}.so",
 ]
 dependency_filenames = [
     # Windows
@@ -24,13 +24,11 @@ dependency_filenames = [
     # Linux
     "tls-client-amd64.so",
     "tls-client-x86.so",
-    "tls-client-arm64.so"
+    "tls-client-arm64.so",
 ]
 
-for github_filename, dependency_filename in zip(github_repo_filenames, dependency_filenames):
-    response = requests.get(
-        url=github_download_url.format(shared_library_version, github_filename)
-    )
+for github_filename, dependency_filename in zip(github_repo_filenames, dependency_filenames, strict=True):
+    response = requests.get(url=github_download_url.format(shared_library_version, github_filename))
     response.raise_for_status()
 
     with open(f"../tls_client/dependencies/{dependency_filename}", "wb") as f:

@@ -13,15 +13,12 @@ import tls_client
 #
 # more client identifiers can be found in settings.py
 
-session = tls_client.Session(
-    client_identifier="chrome_112",
-    random_tls_extension_order=True
-)
+session = tls_client.Session(client_identifier="chrome_112", random_tls_extension_order=True)
 
 res = session.get(
     "https://www.example.com/",
     headers={
         "key1": "value1",
     },
-    proxy="http://user:password@host:port"
+    proxy="http://user:password@host:port",
 )

@@ -1,8 +1,11 @@
-from typing import MutableMapping, Mapping
 from collections import OrderedDict
+from collections.abc import Iterable, Iterator, Mapping, MutableMapping
+from typing import TypeVar
+
+_VT = TypeVar("_VT")
 
 
-class CaseInsensitiveDict(MutableMapping):
+class CaseInsensitiveDict(MutableMapping[str, _VT]):
     """Origin: requests library (https://github.com/psf/requests)
 
     A case-insensitive ``dict``-like object.
@@ -31,34 +34,34 @@ class CaseInsensitiveDict(MutableMapping):
     behavior is undefined.
     """
 
-    def __init__(self, data=None, **kwargs):
-        self._store = OrderedDict()
+    def __init__(self, data: Mapping[str, _VT] | Iterable[tuple[str, _VT]] | None = None, **kwargs: _VT) -> None:
+        self._store: OrderedDict[str, tuple[str, _VT]] = OrderedDict()
         if data is None:
             data = {}
         self.update(data, **kwargs)
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: _VT) -> None:
         # Use the lowercased key for lookups, but store the actual
         # key alongside the value.
         self._store[key.lower()] = (key, value)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> _VT:
         return self._store[key.lower()][1]
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> None:
         del self._store[key.lower()]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return (casedkey for casedkey, mappedvalue in self._store.values())
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._store)
 
-    def lower_items(self):
+    def lower_items(self) -> Iterator[tuple[str, _VT]]:
         """Like iteritems(), but with all lowercase keys."""
         return ((lowerkey, keyval[1]) for (lowerkey, keyval) in self._store.items())
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Mapping):
             other = CaseInsensitiveDict(other)
         else:
@@ -67,8 +70,8 @@ class CaseInsensitiveDict(MutableMapping):
         return dict(self.lower_items()) == dict(other.lower_items())
 
     # Copy is required
-    def copy(self):
+    def copy(self) -> "CaseInsensitiveDict[_VT]":
         return CaseInsensitiveDict(self._store.values())
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(dict(self.items()))
