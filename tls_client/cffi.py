@@ -6,7 +6,7 @@ from sys import platform
 if platform == "darwin":
     file_ext = "-arm64.dylib" if machine() == "arm64" else "-x86.dylib"
 elif platform in ("win32", "cygwin"):
-    file_ext = "-64.dll" if 8 == ctypes.sizeof(ctypes.c_voidp) else "-32.dll"
+    file_ext = "-64.dll" if ctypes.sizeof(ctypes.c_voidp) == 8 else "-32.dll"
 else:
     if machine() == "aarch64":
         file_ext = "-arm64.so"

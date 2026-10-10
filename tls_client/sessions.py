@@ -3,7 +3,7 @@ import ctypes
 import urllib.parse
 import uuid
 from json import dumps, loads
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional
 
 from .__version__ import __version__
 from .cffi import destroySession, freeMemory, request
@@ -18,25 +18,25 @@ class Session:
     def __init__(
         self,
         client_identifier: ClientIdentifiers = "chrome_120",
-        ja3_string: Optional[str] = None,
-        h2_settings: Optional[Dict[str, int]] = None,
-        h2_settings_order: Optional[List[str]] = None,
-        supported_signature_algorithms: Optional[List[str]] = None,
-        supported_delegated_credentials_algorithms: Optional[List[str]] = None,
-        supported_versions: Optional[List[str]] = None,
-        key_share_curves: Optional[List[str]] = None,
-        cert_compression_algo: str = None,
-        additional_decode: str = None,
-        pseudo_header_order: Optional[List[str]] = None,
-        connection_flow: Optional[int] = None,
-        priority_frames: Optional[list] = None,
-        header_order: Optional[List[str]] = None,
-        header_priority: Optional[List[str]] = None,
+        ja3_string: str | None = None,
+        h2_settings: dict[str, int] | None = None,
+        h2_settings_order: list[str] | None = None,
+        supported_signature_algorithms: list[str] | None = None,
+        supported_delegated_credentials_algorithms: list[str] | None = None,
+        supported_versions: list[str] | None = None,
+        key_share_curves: list[str] | None = None,
+        cert_compression_algo: str | None = None,
+        additional_decode: str | None = None,
+        pseudo_header_order: list[str] | None = None,
+        connection_flow: int | None = None,
+        priority_frames: list | None = None,
+        header_order: list[str] | None = None,
+        header_priority: list[str] | None = None,
         random_tls_extension_order: Optional = False,
         force_http1: Optional = False,
         catch_panics: Optional = False,
         debug: Optional = False,
-        certificate_pinning: Optional[Dict[str, List[str]]] = None,
+        certificate_pinning: dict[str, list[str]] | None = None,
     ) -> None:
         self._session_id = str(uuid.uuid4())
         # --- Standard Settings ----------------------------------------------------------------------------------------
@@ -302,16 +302,16 @@ class Session:
         self,
         method: str,
         url: str,
-        params: Optional[dict] = None,  # Optional[dict[str, str]]
-        data: Optional[Union[str, dict]] = None,
-        headers: Optional[dict] = None,  # Optional[dict[str, str]]
-        header_order: Optional[List[str]] = None,
-        cookies: Optional[dict] = None,  # Optional[dict[str, str]]
-        json: Optional[dict] = None,  # Optional[dict]
-        allow_redirects: Optional[bool] = False,
-        insecure_skip_verify: Optional[bool] = False,
-        timeout_seconds: Optional[int] = None,
-        proxy: Optional[dict] = None,  # Optional[dict[str, str]]
+        params: dict | None = None,  # Optional[dict[str, str]]
+        data: str | dict | None = None,
+        headers: dict | None = None,  # Optional[dict[str, str]]
+        header_order: list[str] | None = None,
+        cookies: dict | None = None,  # Optional[dict[str, str]]
+        json: dict | None = None,  # Optional[dict]
+        allow_redirects: bool | None = False,
+        insecure_skip_verify: bool | None = False,
+        timeout_seconds: int | None = None,
+        proxy: dict | None = None,  # Optional[dict[str, str]]
     ) -> Response:
         # --- URL ------------------------------------------------------------------------------------------------------
         # Prepare URL - add params to url
@@ -469,21 +469,15 @@ class Session:
         """Sends a HEAD request"""
         return self.execute_request(method="HEAD", url=url, **kwargs)
 
-    def post(
-        self, url: str, data: Optional[Union[str, dict]] = None, json: Optional[dict] = None, **kwargs: Any
-    ) -> Response:
+    def post(self, url: str, data: str | dict | None = None, json: dict | None = None, **kwargs: Any) -> Response:
         """Sends a POST request"""
         return self.execute_request(method="POST", url=url, data=data, json=json, **kwargs)
 
-    def put(
-        self, url: str, data: Optional[Union[str, dict]] = None, json: Optional[dict] = None, **kwargs: Any
-    ) -> Response:
+    def put(self, url: str, data: str | dict | None = None, json: dict | None = None, **kwargs: Any) -> Response:
         """Sends a PUT request"""
         return self.execute_request(method="PUT", url=url, data=data, json=json, **kwargs)
 
-    def patch(
-        self, url: str, data: Optional[Union[str, dict]] = None, json: Optional[dict] = None, **kwargs: Any
-    ) -> Response:
+    def patch(self, url: str, data: str | dict | None = None, json: dict | None = None, **kwargs: Any) -> Response:
         """Sends a PATCH request"""
         return self.execute_request(method="PATCH", url=url, data=data, json=json, **kwargs)
 

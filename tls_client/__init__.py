@@ -13,3 +13,5 @@
 # requests: https://github.com/psf/requests
 
 from .sessions import Session
+
+__all__ = ["Session"]

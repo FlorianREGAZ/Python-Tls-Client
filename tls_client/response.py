@@ -1,5 +1,4 @@
 import json
-from typing import Union
 
 from .cookies import RequestsCookieJar, cookiejar_from_dict
 from .structures import CaseInsensitiveDict
@@ -53,7 +52,7 @@ class Response:
         return self._content
 
 
-def build_response(res: Union[dict, list], res_cookies: RequestsCookieJar) -> Response:
+def build_response(res: dict | list, res_cookies: RequestsCookieJar) -> Response:
     """Builds a Response object"""
     response = Response()
     # Add target / url

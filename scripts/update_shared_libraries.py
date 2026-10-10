@@ -27,7 +27,7 @@ dependency_filenames = [
     "tls-client-arm64.so",
 ]
 
-for github_filename, dependency_filename in zip(github_repo_filenames, dependency_filenames):
+for github_filename, dependency_filename in zip(github_repo_filenames, dependency_filenames, strict=True):
     response = requests.get(url=github_download_url.format(shared_library_version, github_filename))
     response.raise_for_status()
 
