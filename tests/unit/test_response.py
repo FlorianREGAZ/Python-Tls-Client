@@ -1,4 +1,6 @@
 import base64
+import os
+import tracemalloc
 from typing import Any
 
 import pytest
@@ -119,3 +121,20 @@ class TestBody:
         response = build_response(library_reply(body='{"plain": true}'), cookiejar_from_dict({}))
 
         assert response.json() == {"plain": True}
+
+    def test_large_body_is_not_held_in_several_copies_at_once(self):
+        body = os.urandom(8_000_000)
+        tracemalloc.start()
+        try:
+            reply = library_reply(body=data_uri(body))
+            tracemalloc.reset_peak()
+            response = build_response(reply, cookiejar_from_dict({}))
+            _, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+
+        assert response.content == body
+        assert "body" not in reply
+        # The data URI and its payload are each 4/3 of the body. Freeing the data URI before decoding keeps the
+        # peak near 8/3 of the body; holding it, the payload and the decoded bytes together would reach 11/3.
+        assert peak < 3 * len(body)

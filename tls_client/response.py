@@ -65,7 +65,7 @@ def _charset(content_type: str) -> str | None:
 
 
 def build_response(res: dict[str, Any], res_cookies: RequestsCookieJar) -> Response:
-    """Builds a Response object"""
+    """Builds a Response object. Pops the body from res, so a large body can be freed as soon as it's decoded."""
     response = Response()
     # Add target / url
     response.url = res["target"]
@@ -89,9 +89,11 @@ def build_response(res: dict[str, Any], res_cookies: RequestsCookieJar) -> Respo
     # Add response content (bytes)
     # With isByteResponse the library sends "data:<mime type>;base64,<payload>". It sniffs that mime type from the
     # bytes, which is why .encoding comes from the Content-Type header instead.
-    body: str = res["body"]
+    body: str = res.pop("body")
     prefix, _, payload = body.partition(",")
     if prefix.startswith("data:") and prefix.endswith(";base64"):
+        # Free the data URI before decoding, so it isn't held next to both the payload and the bytes.
+        del body
         # a2b_base64 reads an ASCII str in place, without encoding a copy first.
         response._content = binascii.a2b_base64(payload)
     else:

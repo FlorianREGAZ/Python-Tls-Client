@@ -474,14 +474,9 @@ class Session:
             request_payload["tlsClientIdentifier"] = self.client_identifier
             request_payload["withRandomTLSExtensionOrder"] = self.random_tls_extension_order
 
-        # this is a pointer to the response
-        response = request(dumps(request_payload).encode("utf-8"))
-        # dereference the pointer to a byte array
-        response_bytes = ctypes.string_at(response)
-        # convert our byte array to a string (tls client returns json)
-        response_string = response_bytes.decode("utf-8")
-        # convert response string to json
-        response_object = loads(response_string)
+        # dereference the pointer to the response, decode it and parse it (tls client returns json). None of the steps
+        # is bound to a name, so each copy of a large reply is freed as soon as the next one exists.
+        response_object = loads(ctypes.string_at(request(dumps(request_payload).encode("utf-8"))).decode("utf-8"))
         # free the memory
         freeMemory(response_object["id"].encode("utf-8"))
         # --- Response -------------------------------------------------------------------------------------------------
