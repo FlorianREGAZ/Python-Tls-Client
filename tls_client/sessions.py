@@ -366,8 +366,10 @@ class Session:
         cookies = merge_cookies(self.cookies, cookies)
         # turn cookie jar into dict
         # in the cookie value the " gets removed, because the fhttp library in golang doesn't accept the character
+        # expires is omitted for session cookies, because the tls client parses null as 1970 and drops the cookie
         request_cookies = [
-            {'domain': c.domain, 'expires': c.expires, 'name': c.name, 'path': c.path, 'value': c.value.replace('"', "")}
+            {'domain': c.domain, 'name': c.name, 'path': c.path, 'value': c.value.replace('"', ""),
+             **({'expires': c.expires} if c.expires is not None else {})}
             for c in cookies
         ]
 
@@ -422,7 +424,7 @@ class Session:
                 "connectionFlow": self.connection_flow,
                 "priorityFrames": self.priority_frames,
                 "headerPriority": self.header_priority,
-                "certCompressionAlgo": self.cert_compression_algo,
+                "certCompressionAlgos": [self.cert_compression_algo] if self.cert_compression_algo else None,
                 "supportedVersions": self.supported_versions,
                 "supportedSignatureAlgorithms": self.supported_signature_algorithms,
                 "supportedDelegatedCredentialsAlgorithms": self.supported_delegated_credentials_algorithms ,

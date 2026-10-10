@@ -1,18 +1,18 @@
 import requests
 
-shared_library_version = "1.7.2"
-github_download_url = "https://github.com//bogdanfinn/tls-client/releases/download/v{}/{}"
+shared_library_version = "1.16.0"
+github_download_url = "https://github.com/bogdanfinn/tls-client/releases/download/v{}/{}"
 github_repo_filenames = [
     # Windows
-    f"tls-client-windows-32-v{shared_library_version}.dll",
-    f"tls-client-windows-64-v{shared_library_version}.dll",
+    f"tls-client-windows-32-{shared_library_version}.dll",
+    f"tls-client-windows-64-{shared_library_version}.dll",
     # MacOS
-    f"tls-client-darwin-arm64-v{shared_library_version}.dylib",
-    f"tls-client-darwin-amd64-v{shared_library_version}.dylib",
+    f"tls-client-darwin-arm64-{shared_library_version}.dylib",
+    f"tls-client-darwin-amd64-{shared_library_version}.dylib",
     # Linux
-    f"tls-client-linux-alpine-amd64-v{shared_library_version}.so",
-    f"tls-client-linux-ubuntu-amd64-v{shared_library_version}.so",
-    f"tls-client-linux-arm64-v{shared_library_version}.so"
+    f"tls-client-linux-alpine-amd64-{shared_library_version}.so",
+    f"tls-client-linux-ubuntu-amd64-{shared_library_version}.so",
+    f"tls-client-linux-arm64-{shared_library_version}.so"
 ]
 dependency_filenames = [
     # Windows
@@ -31,6 +31,7 @@ for github_filename, dependency_filename in zip(github_repo_filenames, dependenc
     response = requests.get(
         url=github_download_url.format(shared_library_version, github_filename)
     )
+    response.raise_for_status()
 
     with open(f"../tls_client/dependencies/{dependency_filename}", "wb") as f:
         f.write(response.content)
