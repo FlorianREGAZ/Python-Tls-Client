@@ -92,6 +92,22 @@ res = session.post(
 )
 ```
 
+Example 3 - Async:
+```python
+import asyncio
+import tls_client
+
+async def main():
+    # Takes the same arguments as tls_client.Session.
+    async with tls_client.AsyncSession(client_identifier="chrome_120") as session:
+        responses = await asyncio.gather(
+            *(session.get(f"https://www.example.com/{i}") for i in range(10))
+        )
+        print([res.status_code for res in responses])
+
+asyncio.run(main())
+```
+
 # Pyinstaller / Pyarmor
 **If you want to pack the library with Pyinstaller or Pyarmor, make sure to add this to your command:**
 
