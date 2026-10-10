@@ -13,3 +13,6 @@ htmlcov/
 tls_client/dependencies/*.so
 tls_client/dependencies/*.dylib
 tls_client/dependencies/*.dll
+
+# Claude Code agent worktrees
+.claude/worktrees/
