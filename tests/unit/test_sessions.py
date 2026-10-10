@@ -73,6 +73,11 @@ class TestBody:
         assert fake_lib.sent["isByteRequest"] is True
         assert base64.b64decode(fake_lib.sent["requestBody"]) == body
 
+    def test_response_body_is_requested_as_bytes(self, session, fake_lib):
+        session.get(URL)
+
+        assert fake_lib.sent["isByteResponse"] is True
+
     def test_data_takes_precedence_over_json(self, session, fake_lib):
         session.post(URL, data={"from": "data"}, json={"from": "json"})
 
