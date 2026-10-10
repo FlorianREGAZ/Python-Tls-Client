@@ -44,6 +44,9 @@ include = ["/tls_client", "/README.md", "/LICENSE"]
 dev = [
     "mypy>=2.4.0",
     "pre-commit>=4.6.2",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "pytest-httpbin>=2.1.0",
     "ruff>=0.17.0",
 ]
 
@@ -71,3 +74,24 @@ ignore = ["E501"]
 python_version = "3.10"
 strict = true
 files = ["tls_client"]
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["tests"]
+# Network tests hit public hosts and are opt-in: `uv run pytest -m network`.
+addopts = ["-ra", "--strict-markers", "--strict-config", "-m", "not network", "--cov"]
+xfail_strict = true
+markers = [
+    "integration: real requests through the native library against a local httpbin server",
+    "network: real requests to public hosts on the internet",
+]
+
+[tool.coverage.run]
+source = ["tls_client"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+# Raise this as coverage grows; never lower it.
+fail_under = 88
