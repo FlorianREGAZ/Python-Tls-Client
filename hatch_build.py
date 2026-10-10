@@ -10,12 +10,15 @@ from typing import Any
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
 # Library filename -> wheel platform tag. The floors come from the upstream binaries: the Linux
-# builds need glibc 2.4 (amd64) and 2.17 (arm64), and the macOS builds target macOS 13. There is no
-# musl wheel: musl can't dlopen the upstream musl build.
+# builds need glibc 2.4 (amd64, i686, armv7) and 2.17 (arm64), and the macOS builds target macOS 13.
+# The armv7 build uses the hard-float ABI, which is what armv7l wheel tags mean. There is no musl
+# wheel: musl can't dlopen the upstream musl build.
 PLATFORM_TAGS = {
     "tls-client-darwin-amd64.dylib": "macosx_13_0_x86_64",
     "tls-client-darwin-arm64.dylib": "macosx_13_0_arm64",
+    "tls-client-linux-386.so": "manylinux_2_17_i686",
     "tls-client-linux-arm64.so": "manylinux_2_17_aarch64",
+    "tls-client-linux-armv7.so": "manylinux_2_17_armv7l",
     "tls-client-linux-ubuntu-amd64.so": "manylinux_2_17_x86_64",
     "tls-client-windows-32.dll": "win32",
     "tls-client-windows-64.dll": "win_amd64",

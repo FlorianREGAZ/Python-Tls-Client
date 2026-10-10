@@ -1,3 +1,7 @@
+import subprocess
+import sys
+from pathlib import Path
+
 import pytest
 
 from tls_client import cffi
@@ -32,6 +36,14 @@ def host(monkeypatch: pytest.MonkeyPatch):
         ("darwin", "x86_64", {}, "tls-client-darwin-amd64.dylib"),
         ("linux", "x86_64", {}, "tls-client-linux-ubuntu-amd64.so"),
         ("linux", "aarch64", {}, "tls-client-linux-arm64.so"),
+        # These used to fall through to the x86_64 Alpine library.
+        ("linux", "i686", {"is_64bit": False}, "tls-client-linux-386.so"),
+        ("linux", "i386", {"is_64bit": False}, "tls-client-linux-386.so"),
+        ("linux", "armv7l", {"is_64bit": False}, "tls-client-linux-armv7.so"),
+        ("linux", "armv8l", {"is_64bit": False}, "tls-client-linux-armv7.so"),
+        # 32-bit userland on a 64-bit kernel, e.g. 32-bit Raspberry Pi OS on a Raspberry Pi 4.
+        ("linux", "x86_64", {"is_64bit": False}, "tls-client-linux-386.so"),
+        ("linux", "aarch64", {"is_64bit": False}, "tls-client-linux-armv7.so"),
         ("win32", "AMD64", {"sysconfig_platform": "win-amd64"}, "tls-client-windows-64.dll"),
         # 32-bit Python on 64-bit Windows: the interpreter decides, not the OS.
         ("win32", "AMD64", {"sysconfig_platform": "win32", "is_64bit": False}, "tls-client-windows-32.dll"),
@@ -42,20 +54,21 @@ def test_picks_the_library_for_the_interpreter(host, sys_platform, machine, opti
     host(sys_platform, machine, **options)
 
     assert cffi.library_filename() == expected
+    # fetch_library.py can download it and a wheel is built for it.
+    assert expected in (Path(cffi.DEPENDENCIES_DIR) / "SHA256SUMS").read_text().split()
 
 
 @pytest.mark.parametrize(
     ("sys_platform", "machine", "options"),
     [
-        # These used to fall through to the x86_64 Alpine library.
-        ("linux", "armv7l", {"is_64bit": False}),
-        ("linux", "i686", {"is_64bit": False}),
         ("linux", "riscv64", {}),
-        # 32-bit userland on a 64-bit kernel.
-        ("linux", "x86_64", {"is_64bit": False}),
+        # The armv7 library needs ARMv7, and the 386 one SSE2, which i586 CPUs lack.
+        ("linux", "armv6l", {"is_64bit": False}),
+        ("linux", "i586", {"is_64bit": False}),
         # musl can't dlopen the upstream libraries.
         ("linux", "x86_64", {"musl": True}),
         ("linux", "aarch64", {"musl": True}),
+        ("linux", "armv7l", {"is_64bit": False, "musl": True}),
         # This used to load the x86_64 DLL, which an arm64 interpreter can't.
         ("win32", "ARM64", {"sysconfig_platform": "win-arm64"}),
         ("freebsd14", "amd64", {}),
@@ -78,7 +91,15 @@ def test_unsupported_platform_error_lists_the_supported_platforms(host):
     assert "linux (musl) on aarch64 (64-bit Python)" in message
     assert "musl-based systems such as Alpine can't load the native library" in message
     assert all(supported in message for supported in cffi.SUPPORTED_PLATFORMS)
+    assert "https://github.com/bogdanfinn/tls-client/releases" in message
     assert isinstance(excinfo.value, TLSClientException)
+
+
+def test_armv6_error_explains_that_the_arm_library_needs_armv7(host):
+    host("linux", "armv6l", is_64bit=False)
+
+    with pytest.raises(UnsupportedPlatformError, match=r"The 32-bit ARM library needs ARMv7 or later"):
+        cffi.library_filename()
 
 
 def test_missing_library_says_how_to_download_it(monkeypatch, tmp_path):
@@ -86,3 +107,35 @@ def test_missing_library_says_how_to_download_it(monkeypatch, tmp_path):
 
     with pytest.raises(FileNotFoundError, match=r"python scripts/fetch_library\.py tls-client-"):
         cffi._load_library()
+
+
+def test_importing_tls_client_does_not_load_the_library():
+    # A fresh interpreter, because this one may have loaded the library already.
+    code = (
+        "import ctypes\n"
+        "def refuse(path): raise AssertionError(f'loaded {path} too early')\n"
+        "ctypes.cdll.LoadLibrary = refuse\n"
+        "import tls_client\n"
+        "tls_client.Session()\n"
+    )
+
+    subprocess.run([sys.executable, "-c", code], check=True, timeout=60)
+
+
+def test_library_is_loaded_once(monkeypatch):
+    loaded = []
+
+    def load():
+        loaded.append(True)
+        return "library"
+
+    monkeypatch.setattr(cffi, "_load_library", load)
+    cffi.load_library.cache_clear()
+    try:
+        assert cffi.load_library() == "library"
+        assert cffi.load_library() == "library"
+    finally:
+        # Later tests should get the real library.
+        cffi.load_library.cache_clear()
+
+    assert loaded == [True]
