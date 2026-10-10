@@ -110,12 +110,12 @@ Linux Alpine / AMD64:
 --add-binary '{path_to_library}/tls_client/dependencies/tls-client-amd64.so:tls_client/dependencies'
 ```
 
-MacOS M1 and older:
+macOS on Intel x86 based Macs (pre-M1):
 ```
 --add-binary '{path_to_library}/tls_client/dependencies/tls-client-x86.dylib:tls_client/dependencies'
 ```
 
-MacOS M2:
+macOS on Apple Silicon (M1 and later):
 ```
 --add-binary '{path_to_library}/tls_client/dependencies/tls-client-arm64.dylib:tls_client/dependencies'
 ```
