@@ -61,9 +61,6 @@ def test_preset_presents_the_browser_fingerprint(identifier, ja4, akamai):
     assert fp["http2"]["akamai_fingerprint"] == akamai
 
 
-@pytest.mark.xfail(
-    raises=TLSClientException, reason="alpnProtocols is never sent, so the server aborts the custom handshake"
-)
 def test_custom_tls_configuration_is_what_the_server_sees():
     ja3 = "771,4865-4866-4867-49195-49199-49196-49200-52393-52392-49171-49172-156-157-47-53,0-23-65281-10-11-35-16-5-13-18-51-45-43-27,29-23-24,0"
 

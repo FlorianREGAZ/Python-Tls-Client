@@ -13,21 +13,11 @@ Example 1 - Preset:
 ```python
 import tls_client
 
-# You can also use the following as `client_identifier`:
-# Chrome --> chrome_103, chrome_104, chrome_105, chrome_106, chrome_107, chrome_108, chrome109, Chrome110,
-#            chrome111, chrome112, chrome_116_PSK, chrome_116_PSK_PQ, chrome_117, chrome_120
-# Firefox --> firefox_102, firefox_104, firefox108, Firefox110, firefox_117, firefox_120
-# Opera --> opera_89, opera_90
-# Safari --> safari_15_3, safari_15_6_1, safari_16_0
-# iOS --> safari_ios_15_5, safari_ios_15_6, safari_ios_16_0
-# iPadOS --> safari_ios_15_6
-# Android --> okhttp4_android_7, okhttp4_android_8, okhttp4_android_9, okhttp4_android_10, okhttp4_android_11,
-#             okhttp4_android_12, okhttp4_android_13
-#
-# more client identifiers can be found in settings.py
+# `client_identifier` picks the browser profile to impersonate, e.g. chrome_120, firefox_120, safari_ios_17_0 or
+# okhttp4_android_13. Every supported name is listed in tls_client/settings.py; unknown names raise a ValueError.
 
 session = tls_client.Session(
-    client_identifier="chrome112",
+    client_identifier="chrome_112",
     random_tls_extension_order=True
 )
 
@@ -45,6 +35,8 @@ Example 2 - Custom:
 import tls_client
 
 session = tls_client.Session(
+    # None switches from a preset to the settings below. Without it they are all ignored.
+    client_identifier=None,
     ja3_string="771,4865-4866-4867-49195-49199-49196-49200-52393-52392-49171-49172-156-157-47-53,0-23-65281-10-11-35-16-5-13-18-51-45-43-27-17513,29-23-24,0",
     h2_settings={
         "HEADER_TABLE_SIZE": 65536,
@@ -71,6 +63,9 @@ session = tls_client.Session(
     supported_versions=["GREASE", "1.3", "1.2"],
     key_share_curves=["GREASE", "X25519"],
     cert_compression_algo="brotli",
+    # The JA3 contains ALPN (16) and ALPS (17513), these fill them in.
+    alpn_protocols=["h2", "http/1.1"],
+    alps_protocols=["h2"],
     pseudo_header_order=[
         ":method",
         ":authority",

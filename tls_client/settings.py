@@ -1,5 +1,7 @@
-from typing import Literal, TypeAlias
+from typing import Literal, TypeAlias, get_args
 
+# Mirrors MappedTLSClients in profiles/profiles.go of bogdanfinn/tls-client, at the version scripts/fetch_library.py
+# downloads. The library silently falls back to its default profile for names it doesn't know, so keep the two in sync.
 ClientIdentifiers: TypeAlias = Literal[
     # Chrome
     "chrome_103",
@@ -94,3 +96,6 @@ ClientIdentifiers: TypeAlias = Literal[
     "confirmed_ios",
     "confirmed_android",
 ]
+
+# The same names as a tuple, for checking values at runtime.
+CLIENT_IDENTIFIERS: tuple[str, ...] = get_args(ClientIdentifiers)
