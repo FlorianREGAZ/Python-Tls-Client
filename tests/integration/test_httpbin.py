@@ -51,6 +51,30 @@ class TestRequestBody:
         # httpbin reports bodies that are not valid UTF-8 as a base64 data URL.
         assert response.json()["data"] == "data:application/octet-stream;base64," + base64.b64encode(payload).decode()
 
+    def test_files_and_form_fields_reach_the_server_as_multipart(self, httpbin, session, tmp_path):
+        path = tmp_path / "notes.txt"
+        path.write_text("café\n", encoding="utf-8")
+
+        with path.open("rb") as f:
+            response = session.post(
+                f"{httpbin.url}/post",
+                data={"user": "a b", "role": ["x", "y"]},
+                files={"notes": f, "text": ("hello.txt", "∮ E⋅da = Q"), "plain": (None, "field")},
+            )
+
+        echoed = response.json()
+        assert echoed["headers"]["Content-Type"].startswith("multipart/form-data; boundary=")
+        assert echoed["form"] == {"user": "a b", "role": ["x", "y"], "plain": "field"}
+        assert echoed["files"] == {"notes": "café\n", "text": "∮ E⋅da = Q"}
+
+    def test_binary_file_reaches_the_server_unchanged(self, httpbin, session):
+        payload = bytes(range(256))
+
+        response = session.post(f"{httpbin.url}/post", files={"image": ("pixel.png", payload)})
+
+        # httpbin reports file content that is not valid UTF-8 as a base64 data URL with the part's Content-Type.
+        assert response.json()["files"] == {"image": "data:image/png;base64," + base64.b64encode(payload).decode()}
+
     def test_headers_reach_the_server_and_none_removes_one(self, httpbin, session):
         response = session.get(f"{httpbin.url}/headers", headers={"X-Custom": "1", "Accept": None})
 
