@@ -77,6 +77,8 @@ def _load_library() -> ctypes.CDLL:
     for function in (library.request, library.freeMemory, library.destroySession):
         function.argtypes = [ctypes.c_char_p]
         function.restype = ctypes.c_char_p
+    # freeMemory returns nothing; reading its return register as a string pointer could crash.
+    library.freeMemory.restype = None
     return library
 
 
