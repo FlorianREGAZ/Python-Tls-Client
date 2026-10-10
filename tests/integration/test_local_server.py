@@ -185,7 +185,8 @@ class TestRedirectCookies:
 
         assert [r.status_code for r in response.history] == [302, 302, 302]
         assert response.url == f"{server_url}/headers"
-        assert response.json()["cookie"] == "hop3=set; hop2=set; hop1=set"
+        # Cookies of the same path have no defined order in the header; it differs between Python versions.
+        assert sorted(response.json()["cookie"].split("; ")) == ["hop1=set", "hop2=set", "hop3=set"]
         assert session.cookies.get_dict() == {"hop3": "set", "hop2": "set", "hop1": "set"}
         assert response.cookies.get_dict() == {"hop3": "set", "hop2": "set", "hop1": "set"}
 
@@ -206,4 +207,4 @@ class TestRedirectCookies:
         jar, received = asyncio.run(main())
 
         assert jar == {"hop2": "set", "hop1": "set"}
-        assert received["cookie"] == "hop2=set; hop1=set"
+        assert sorted(received["cookie"].split("; ")) == ["hop1=set", "hop2=set"]
