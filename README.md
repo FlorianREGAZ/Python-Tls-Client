@@ -105,11 +105,6 @@ Linux with glibc (e.g. Ubuntu, Debian) / x86_64:
 --add-binary '{path_to_library}/tls_client/dependencies/tls-client-linux-ubuntu-amd64.so:tls_client/dependencies'
 ```
 
-Linux with musl (e.g. Alpine) / x86_64:
-```
---add-binary '{path_to_library}/tls_client/dependencies/tls-client-linux-alpine-amd64.so:tls_client/dependencies'
-```
-
 Linux / ARM64:
 ```
 --add-binary '{path_to_library}/tls_client/dependencies/tls-client-linux-arm64.so:tls_client/dependencies'

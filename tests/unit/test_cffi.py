@@ -31,7 +31,6 @@ def host(monkeypatch: pytest.MonkeyPatch):
         ("darwin", "arm64", {}, "tls-client-darwin-arm64.dylib"),
         ("darwin", "x86_64", {}, "tls-client-darwin-amd64.dylib"),
         ("linux", "x86_64", {}, "tls-client-linux-ubuntu-amd64.so"),
-        ("linux", "x86_64", {"musl": True}, "tls-client-linux-alpine-amd64.so"),
         ("linux", "aarch64", {}, "tls-client-linux-arm64.so"),
         ("win32", "AMD64", {"sysconfig_platform": "win-amd64"}, "tls-client-windows-64.dll"),
         # 32-bit Python on 64-bit Windows: the interpreter decides, not the OS.
@@ -54,7 +53,8 @@ def test_picks_the_library_for_the_interpreter(host, sys_platform, machine, opti
         ("linux", "riscv64", {}),
         # 32-bit userland on a 64-bit kernel.
         ("linux", "x86_64", {"is_64bit": False}),
-        # Upstream builds its arm64 Linux library against glibc only.
+        # musl can't dlopen the upstream libraries.
+        ("linux", "x86_64", {"musl": True}),
         ("linux", "aarch64", {"musl": True}),
         # This used to load the x86_64 DLL, which an arm64 interpreter can't.
         ("win32", "ARM64", {"sysconfig_platform": "win-arm64"}),
@@ -76,6 +76,7 @@ def test_unsupported_platform_error_lists_the_supported_platforms(host):
 
     message = str(excinfo.value)
     assert "linux (musl) on aarch64 (64-bit Python)" in message
+    assert "musl-based systems such as Alpine can't load the native library" in message
     assert all(supported in message for supported in cffi.SUPPORTED_PLATFORMS)
     assert isinstance(excinfo.value, TLSClientException)
 

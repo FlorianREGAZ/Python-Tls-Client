@@ -21,7 +21,6 @@ DOWNLOAD_URL = "https://github.com/bogdanfinn/tls-client/releases/download/v{ver
 SHA256 = {
     "tls-client-darwin-amd64.dylib": "6463457ea713a96b3b8c94fd9d8746e7bc510cb6784fcf0f4bb64d9c83e3251a",
     "tls-client-darwin-arm64.dylib": "99984d013921c753ab29d28720cb099eff6adf63538347e13652cb5cfe5bdc02",
-    "tls-client-linux-alpine-amd64.so": "83c8702e8e8af2e5629277f422e77384a8780ac63c7f20988269a82d78e835ae",
     "tls-client-linux-arm64.so": "e398622f99c0ce8fccb50ff6e414f373b5932a0277ece90468a796992f0ae518",
     "tls-client-linux-ubuntu-amd64.so": "2ec853496634545e7a7ea028715763948d55bbdd97aca7ecaa9fea8c2ebb08df",
     "tls-client-windows-32.dll": "5203a36f80ea3f9cdfa43bf072a775702d1802acb8e4304e78905210f67dd2af",
