@@ -10,9 +10,22 @@ from .exceptions import UnsupportedPlatformError
 # Platforms with a prebuilt upstream library, as named in the wheels.
 SUPPORTED_PLATFORMS = (
     "macOS on x86_64 or arm64",
-    "Linux with glibc on x86_64 or aarch64",
+    "Linux with glibc on x86_64, aarch64, i686 or armv7l (hard-float)",
     "Windows on x86 or x86_64",
 )
+
+# Linux machine() -> (library for 64-bit Python, library for 32-bit Python). machine() reports the kernel's
+# architecture, so a 32-bit userland on a 64-bit kernel still says x86_64 or aarch64.
+LINUX_LIBRARIES = {
+    "x86_64": ("linux-ubuntu-amd64.so", "linux-386.so"),
+    "amd64": ("linux-ubuntu-amd64.so", "linux-386.so"),
+    "i686": (None, "linux-386.so"),
+    "i386": (None, "linux-386.so"),
+    "aarch64": ("linux-arm64.so", "linux-armv7.so"),
+    "arm64": ("linux-arm64.so", "linux-armv7.so"),
+    "armv8l": (None, "linux-armv7.so"),
+    "armv7l": (None, "linux-armv7.so"),
+}
 
 DEPENDENCIES_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "dependencies")
 
@@ -45,21 +58,26 @@ def library_filename() -> str:
     elif sys.platform == "cygwin":
         if machine in ("x86_64", "i686", "i386"):
             target = "windows-64.dll" if is_64bit else "windows-32.dll"
-    elif sys.platform.startswith("linux") and is_64bit and not _is_musl():
-        # A 32-bit userland on a 64-bit kernel still reports the kernel's machine, hence the is_64bit check.
-        if machine in ("x86_64", "amd64"):
-            target = "linux-ubuntu-amd64.so"
-        elif machine in ("aarch64", "arm64"):
-            target = "linux-arm64.so"
+    elif sys.platform.startswith("linux") and not _is_musl():
+        library_64bit, library_32bit = LINUX_LIBRARIES.get(machine, (None, None))
+        target = library_64bit if is_64bit else library_32bit
 
     if target is None:
         musl = _is_musl()
         bits = "64" if is_64bit else "32"
-        # Upstream does publish a musl build, but musl refuses to dlopen it (Go c-shared uses initial-exec TLS).
-        reason = " musl-based systems such as Alpine can't load the native library." if musl else ""
+        reason = ""
+        if musl:
+            # Upstream does publish a musl build, but musl refuses to dlopen it (Go c-shared uses initial-exec TLS).
+            reason = " musl-based systems such as Alpine can't load the native library."
+        elif machine.startswith(("armv5", "armv6")):
+            # Upstream's ARMv5 and ARMv6 builds are soft-float, which a hard-float Python such as Raspberry Pi OS's
+            # can't load, and the armv7 build stops the process on older CPUs.
+            reason = " The 32-bit ARM library needs ARMv7 or later, so the Raspberry Pi 1 and Zero can't use it."
         raise UnsupportedPlatformError(
             f"tls_client has no native library for {sys.platform}{' (musl)' if musl else ''} on {platform.machine()} "
-            f"({bits}-bit Python).{reason} Supported platforms: {'; '.join(SUPPORTED_PLATFORMS)}."
+            f"({bits}-bit Python).{reason} Supported platforms: {'; '.join(SUPPORTED_PLATFORMS)}. "
+            "If https://github.com/bogdanfinn/tls-client/releases has a build for this platform, "
+            "please open an issue at https://github.com/FlorianREGAZ/Python-Tls-Client/issues."
         )
     return f"tls-client-{target}"
 

@@ -121,6 +121,16 @@ Linux / ARM64:
 --add-binary '{path_to_library}/tls_client/dependencies/tls-client-linux-arm64.so:tls_client/dependencies'
 ```
 
+Linux with glibc / 32-bit x86:
+```
+--add-binary '{path_to_library}/tls_client/dependencies/tls-client-linux-386.so:tls_client/dependencies'
+```
+
+Linux / 32-bit ARMv7 and later (e.g. 32-bit Raspberry Pi OS on a Raspberry Pi 2 or newer):
+```
+--add-binary '{path_to_library}/tls_client/dependencies/tls-client-linux-armv7.so:tls_client/dependencies'
+```
+
 macOS on Intel x86 based Macs (pre-M1):
 ```
 --add-binary '{path_to_library}/tls_client/dependencies/tls-client-darwin-amd64.dylib:tls_client/dependencies'
