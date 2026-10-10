@@ -73,7 +73,7 @@ class TestSettings:
         assert fake_lib.sent["headers"]["X-Session"] == "1"
         assert sent_cookies(fake_lib.sent) == {"from_session": "1"}
         assert fake_lib.sent["proxyUrl"] == "http://proxy:8080"
-        assert fake_lib.sent["timeoutSeconds"] == 5
+        assert fake_lib.sent["timeoutMilliseconds"] == 5000
         assert fake_lib.sent["forceHttp1"] is True
 
 

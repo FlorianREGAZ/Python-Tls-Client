@@ -67,11 +67,11 @@ class AsyncSession:
         self._session.params = value
 
     @property
-    def timeout_seconds(self) -> int:
+    def timeout_seconds(self) -> float:
         return self._session.timeout_seconds
 
     @timeout_seconds.setter
-    def timeout_seconds(self, value: int) -> None:
+    def timeout_seconds(self, value: float) -> None:
         self._session.timeout_seconds = value
 
     # --- Lifecycle ----------------------------------------------------------------------------------------------------
@@ -89,8 +89,8 @@ class AsyncSession:
     # --- Requests -----------------------------------------------------------------------------------------------------
 
     async def execute_request(self, method: str, url: str, **kwargs: Any) -> Response:
-        # Session.execute_request writes to the session's headers (Content-Type) and cookie jar, and neither is safe to
-        # use from several threads at once. Each request therefore runs on a shallow copy of the session: it shares the
+        # Session.execute_request reads the session's headers and writes to its cookie jar, and neither is safe to use
+        # from several threads at once. Each request therefore runs on a shallow copy of the session: it shares the
         # native session, so connections are reused, but gets its own headers and cookie jar.
         request_session = copy.copy(self._session)
         request_session.headers = CaseInsensitiveDict(self._session.headers)
