@@ -100,29 +100,39 @@ res = session.post(
 # Pyinstaller / Pyarmor
 **If you want to pack the library with Pyinstaller or Pyarmor, make sure to add this to your command:**
 
-Linux - Ubuntu / x86:
+Linux with glibc (e.g. Ubuntu, Debian) / x86_64:
 ```
---add-binary '{path_to_library}/tls_client/dependencies/tls-client-x86.so:tls_client/dependencies'
+--add-binary '{path_to_library}/tls_client/dependencies/tls-client-linux-ubuntu-amd64.so:tls_client/dependencies'
 ```
 
-Linux Alpine / AMD64:
+Linux with musl (e.g. Alpine) / x86_64:
 ```
---add-binary '{path_to_library}/tls_client/dependencies/tls-client-amd64.so:tls_client/dependencies'
+--add-binary '{path_to_library}/tls_client/dependencies/tls-client-linux-alpine-amd64.so:tls_client/dependencies'
+```
+
+Linux / ARM64:
+```
+--add-binary '{path_to_library}/tls_client/dependencies/tls-client-linux-arm64.so:tls_client/dependencies'
 ```
 
 macOS on Intel x86 based Macs (pre-M1):
 ```
---add-binary '{path_to_library}/tls_client/dependencies/tls-client-x86.dylib:tls_client/dependencies'
+--add-binary '{path_to_library}/tls_client/dependencies/tls-client-darwin-amd64.dylib:tls_client/dependencies'
 ```
 
 macOS on Apple Silicon (M1 and later):
 ```
---add-binary '{path_to_library}/tls_client/dependencies/tls-client-arm64.dylib:tls_client/dependencies'
+--add-binary '{path_to_library}/tls_client/dependencies/tls-client-darwin-arm64.dylib:tls_client/dependencies'
 ```
 
-Windows:
+Windows / 64-bit:
 ```
---add-binary '{path_to_library}/tls_client/dependencies/tls-client-64.dll;tls_client/dependencies'
+--add-binary '{path_to_library}/tls_client/dependencies/tls-client-windows-64.dll;tls_client/dependencies'
+```
+
+Windows / 32-bit:
+```
+--add-binary '{path_to_library}/tls_client/dependencies/tls-client-windows-32.dll;tls_client/dependencies'
 ```
 
 # Acknowledgements
