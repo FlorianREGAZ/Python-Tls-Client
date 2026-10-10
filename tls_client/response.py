@@ -20,8 +20,11 @@ class Response:
         # Case-insensitive dictionary of Response Headers. Headers sent more than once map to a list of values.
         self.headers: CaseInsensitiveDict[str | list[str]] = CaseInsensitiveDict()
 
-        # A CookieJar of Cookies the server sent back.
+        # A CookieJar of Cookies the server sent back, on every redirect that led to this response too.
         self.cookies = cookiejar_from_dict({})
+
+        # Responses of the redirects followed to get this one, oldest first.
+        self.history: list[Response] = []
 
         # Encoding used to decode .text: the charset of the Content-Type header, else a BOM or the charset the document
         # declares in a <meta> tag. Set it to decode the body with another encoding; None means UTF-8.

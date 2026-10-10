@@ -99,7 +99,8 @@ class AsyncSession:
         response = await self._run(request_session.execute_request, method=method, url=url, **kwargs)
 
         # Back on the event loop thread, so no other request touches the jar while the new cookies go in. Like Session,
-        # keep the cookies sent with the request, then the ones the server set.
+        # keep the cookies sent with the request, then the ones the server set (response.cookies holds those of every
+        # redirect followed too).
         cookies = kwargs.get("cookies")
         if cookies:
             self._session.cookies.update(cookies)

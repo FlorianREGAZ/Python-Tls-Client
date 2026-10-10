@@ -426,6 +426,18 @@ def merge_cookies(cookiejar: RequestsCookieJar, cookies: dict[str, str] | Cookie
     return cookiejar
 
 
+def get_cookie_header(cookie_jar: CookieJar, request_url: str, request_headers: Mapping[str, str | None]) -> str | None:
+    """Cookie header for the cookies in the jar that may be sent to request_url, or None if there are none.
+
+    The jar decides by domain, path, secure flag and expiry, like a browser. request_headers must not contain a Cookie
+    header, or the jar adds nothing.
+    """
+    req = MockRequest(request_url, request_headers)
+    # add_cookie_header only needs the duck-typed subset of Request the mock implements
+    cookie_jar.add_cookie_header(req)  # type: ignore[arg-type]
+    return req.get_new_headers().get("Cookie")
+
+
 def extract_cookies_to_jar(
     request_url: str,
     request_headers: Mapping[str, str | None],
@@ -444,6 +456,6 @@ def extract_cookies_to_jar(
     res = MockResponse(http_message)
     # extract_cookies only needs the duck-typed subset of HTTPResponse and Request the mocks implement
     response_cookie_jar.extract_cookies(res, req)  # type: ignore[arg-type]
-
-    merge_cookies(cookie_jar, response_cookie_jar)
+    # Extracted into the session jar too rather than merged, so a cookie the server expires is removed from it
+    cookie_jar.extract_cookies(res, req)  # type: ignore[arg-type]
     return response_cookie_jar

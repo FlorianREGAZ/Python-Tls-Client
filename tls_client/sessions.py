@@ -10,8 +10,8 @@ from typing import Any, TypeAlias
 
 from .__version__ import __version__
 from .cffi import destroySession, freeMemory, request
-from .cookies import cookiejar_from_dict, extract_cookies_to_jar, merge_cookies
-from .exceptions import TLSClientException
+from .cookies import cookiejar_from_dict, extract_cookies_to_jar, get_cookie_header, merge_cookies
+from .exceptions import TLSClientException, TooManyRedirects
 from .multipart import Files, encode_multipart
 from .response import Response, build_response
 from .settings import CLIENT_IDENTIFIERS, ClientIdentifiers
@@ -23,6 +23,35 @@ _Data: TypeAlias = str | bytes | Mapping[str, Any] | list[tuple[str, Any]]
 _Json: TypeAlias = dict[str, Any] | list[Any] | str
 # Either a proxy URL, or a dict whose "http" entry is used.
 _Proxy: TypeAlias = dict[str, str] | str
+
+# Statuses followed with allow_redirects, if the response has a Location header
+_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+# Redirects followed for one request before TooManyRedirects is raised, the same limit as in requests
+MAX_REDIRECTS = 30
+_DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
+def _redirect_method(status_code: int, method: str) -> str:
+    """Method of the request that follows a redirect, as browsers pick it: 303 turns anything but HEAD into a GET, and
+    301 and 302 turn a POST into one. 307 and 308 keep the method."""
+    if status_code == 303 and method.upper() != "HEAD":
+        return "GET"
+    if status_code in (301, 302) and method.upper() == "POST":
+        return "GET"
+    return method
+
+
+def _leaves_origin(url: str, next_url: str) -> bool:
+    """Whether a redirect from url to next_url changes host, port or scheme. An upgrade from http to https on the
+    default ports doesn't count, like in requests."""
+    old, new = urllib.parse.urlsplit(url), urllib.parse.urlsplit(next_url)
+    if old.hostname != new.hostname:
+        return True
+    old_port = old.port or _DEFAULT_PORTS.get(old.scheme)
+    new_port = new.port or _DEFAULT_PORTS.get(new.scheme)
+    if old.scheme == "http" and old_port == 80 and new.scheme == "https" and new_port == 443:
+        return False
+    return old.scheme != new.scheme or old_port != new_port
 
 
 class Session:
@@ -403,21 +432,12 @@ class Session:
             request_header_order = header_order
 
         # --- Cookies --------------------------------------------------------------------------------------------------
-        # Merge with session cookies
+        # Request cookies are added to the session jar. The jar is the only cookie store: the library runs without one
+        # (withoutCookieJar), so a cookie removed from the jar is no longer sent.
         cookie_jar = merge_cookies(self.cookies, cookies or {})
-        # turn cookie jar into dict
-        # in the cookie value the " gets removed, because the fhttp library in golang doesn't accept the character
-        # expires is omitted for session cookies, because the tls client parses null as 1970 and drops the cookie
-        request_cookies = [
-            {
-                "domain": c.domain,
-                "name": c.name,
-                "path": c.path,
-                "value": (c.value or "").replace('"', ""),
-                **({"expires": c.expires} if c.expires is not None else {}),
-            }
-            for c in cookie_jar
-        ]
+        # The jar's cookies are added to each request, redirects included, as a Cookie header. A Cookie header passed in
+        # is sent before them.
+        passed_cookie_header = request_headers.pop("Cookie", None)
 
         # --- Proxy ----------------------------------------------------------------------------------------------------
         proxy = proxy or self.proxies
@@ -442,27 +462,23 @@ class Session:
         certificate_pinning = self.certificate_pinning
 
         # --- Request --------------------------------------------------------------------------------------------------
-        is_byte_request = isinstance(request_body, (bytes, bytearray))
+        # Settings shared by every request of a redirect chain. The URL, method, headers and body are set per request.
         request_payload: dict[str, Any] = {
             "sessionId": self._session_id,
-            "followRedirects": allow_redirects,
+            # Redirects are followed below, so that the cookies set on every hop end up in self.cookies.
+            "followRedirects": False,
+            # Cookies come from self.cookies only. Without this, the library also keeps the cookies of every response
+            # in a jar of its own and sends them on later requests of the session.
+            "withoutCookieJar": True,
             "forceHttp1": self.force_http1,
             "withDebug": self.debug,
             "catchPanics": self.catch_panics,
-            "headers": dict(request_headers),
             "headerOrder": request_header_order,
             "insecureSkipVerify": insecure_skip_verify,
-            "isByteRequest": is_byte_request,
             # Return the body as base64 so binary bodies survive; build_response decodes it.
             "isByteResponse": True,
             "additionalDecode": self.additional_decode,
             "proxyUrl": proxy_url,
-            "requestUrl": url,
-            "requestMethod": method,
-            "requestBody": base64.b64encode(request_body).decode()
-            if isinstance(request_body, (bytes, bytearray))
-            else request_body,
-            "requestCookies": request_cookies,
             # Milliseconds, so fractions of a second work. The library rejects timeoutSeconds alongside it.
             "timeoutMilliseconds": round(request_timeout * 1000),
         }
@@ -489,24 +505,79 @@ class Session:
             request_payload["tlsClientIdentifier"] = self.client_identifier
             request_payload["withRandomTLSExtensionOrder"] = self.random_tls_extension_order
 
-        # dereference the pointer to the response, decode it and parse it (tls client returns json). None of the steps
-        # is bound to a name, so each copy of a large reply is freed as soon as the next one exists.
-        response_object = loads(ctypes.string_at(request(dumps(request_payload).encode("utf-8"))).decode("utf-8"))
-        # free the memory
-        freeMemory(response_object["id"].encode("utf-8"))
-        # --- Response -------------------------------------------------------------------------------------------------
-        # Error handling
-        if response_object["status"] == 0:
-            raise TLSClientException(response_object["body"])
-        # Set response cookies
-        response_cookie_jar = extract_cookies_to_jar(
-            request_url=url,
-            request_headers=request_headers,
-            cookie_jar=cookie_jar,
-            response_headers=response_object["headers"],
-        )
-        # build response class
-        return build_response(response_object, response_cookie_jar)
+        # Sends the request, then with allow_redirects each request a redirect asks for, like requests does.
+        history: list[Response] = []
+        # Cookies set on any hop of a redirect chain, for the final response
+        chain_cookies = cookiejar_from_dict({})
+        while True:
+            # The jar picks the cookies for the URL by domain, path, secure flag and expiry.
+            sent_headers = CaseInsensitiveDict(request_headers)
+            cookie_header = "; ".join(
+                filter(None, [passed_cookie_header, get_cookie_header(cookie_jar, url, request_headers)])
+            )
+            if cookie_header:
+                sent_headers["Cookie"] = cookie_header
+            request_payload["headers"] = dict(sent_headers)
+            request_payload["requestUrl"] = url
+            request_payload["requestMethod"] = method
+            request_payload["isByteRequest"] = isinstance(request_body, (bytes, bytearray))
+            request_payload["requestBody"] = (
+                base64.b64encode(request_body).decode()
+                if isinstance(request_body, (bytes, bytearray))
+                else request_body
+            )
+
+            # dereference the pointer to the response, decode it and parse it (tls client returns json). None of the
+            # steps is bound to a name, so each copy of a large reply is freed as soon as the next one exists.
+            response_object = loads(ctypes.string_at(request(dumps(request_payload).encode("utf-8"))).decode("utf-8"))
+            # free the memory
+            freeMemory(response_object["id"].encode("utf-8"))
+            # --- Response ---------------------------------------------------------------------------------------------
+            # Error handling
+            if response_object["status"] == 0:
+                raise TLSClientException(response_object["body"])
+            # Set response cookies
+            response_cookie_jar = extract_cookies_to_jar(
+                request_url=url,
+                request_headers=request_headers,
+                cookie_jar=cookie_jar,
+                response_headers=response_object["headers"],
+            )
+            chain_cookies.update(response_cookie_jar)
+            # build response class
+            response = build_response(response_object, response_cookie_jar)
+
+            # --- Redirects --------------------------------------------------------------------------------------------
+            location = response.headers.get("Location")
+            if not allow_redirects or response.status_code not in _REDIRECT_STATUSES or location is None:
+                break
+            if len(history) == MAX_REDIRECTS:
+                raise TooManyRedirects(f"Exceeded {MAX_REDIRECTS} redirects, the last from {url}")
+            history.append(response)
+
+            # A relative Location is resolved against the current URL. Like in requests, the fragment carries over
+            # unless the Location has one of its own.
+            next_url = urllib.parse.urljoin(url, location if isinstance(location, str) else location[0])
+            fragment = urllib.parse.urlsplit(url).fragment
+            if fragment and not urllib.parse.urlsplit(next_url).fragment:
+                next_url = f"{next_url}#{fragment}"
+            # Credentials passed for one host aren't sent to another
+            if _leaves_origin(url, next_url):
+                request_headers.pop("Authorization", None)
+                passed_cookie_header = None
+            url = next_url
+
+            next_method = _redirect_method(response.status_code, method)
+            if next_method != method:
+                # The request turned into a GET, which has no body
+                method = next_method
+                request_body = None
+                for header in ("Content-Type", "Content-Length", "Transfer-Encoding"):
+                    request_headers.pop(header, None)
+
+        response.history = history
+        response.cookies = chain_cookies
+        return response
 
     def get(self, url: str, **kwargs: Any) -> Response:
         """Sends a GET request"""

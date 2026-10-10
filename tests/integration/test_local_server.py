@@ -1,6 +1,7 @@
-"""Real requests through the native library against a stdlib HTTP server, for bodies and headers httpbin can't
-produce byte for byte."""
+"""Real requests through the native library against a stdlib HTTP server, for bodies, headers and redirects httpbin
+can't produce byte for byte."""
 
+import asyncio
 import base64
 import json
 import os
@@ -11,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from tls_client import Session
+from tls_client import AsyncSession, Session
 from tls_client.exceptions import TLSClientException
 
 pytestmark = pytest.mark.integration
@@ -45,6 +46,12 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/slow":
             time.sleep(SLOW_SECONDS)
             self.reply("text/plain", b"done")
+        elif self.path.startswith("/chain/"):
+            # /chain/<n> sets the cookie hop<n> and redirects to /chain/<n - 1>, /chain/0 to /headers.
+            hops = int(self.path.removeprefix("/chain/"))
+            self.redirect(f"/chain/{hops - 1}" if hops > 1 else "/headers", f"hop{hops}=set; Path=/")
+        elif self.path == "/expire-hop1":
+            self.redirect("/headers", "hop1=; Max-Age=0; Path=/")
         else:
             content_type, body = BODIES[self.path]
             self.reply(content_type, body, {"x-MiXeD-case": "yes"})
@@ -56,6 +63,13 @@ class Handler(BaseHTTPRequestHandler):
     def echo_headers(self) -> None:
         received = {name.lower(): value for name, value in self.headers.items()}
         self.reply("application/json", json.dumps(received).encode())
+
+    def redirect(self, location: str, set_cookie: str) -> None:
+        self.send_response(302)
+        self.send_header("Location", location)
+        self.send_header("Set-Cookie", set_cookie)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def reply(self, content_type: str, body: bytes, extra_headers: dict[str, str] | None = None) -> None:
         self.send_response(200)
@@ -163,3 +177,34 @@ class TestTimeout:
 
         with pytest.raises(TLSClientException, match="Timeout exceeded"):
             session.get(f"{server_url}/slow")
+
+
+class TestRedirectCookies:
+    def test_cookie_set_on_every_hop_is_stored_and_sent_on_the_next_one(self, server_url, session):
+        response = session.get(f"{server_url}/chain/3", allow_redirects=True)
+
+        assert [r.status_code for r in response.history] == [302, 302, 302]
+        assert response.url == f"{server_url}/headers"
+        # Cookies of the same path have no defined order in the header; it differs between Python versions.
+        assert sorted(response.json()["cookie"].split("; ")) == ["hop1=set", "hop2=set", "hop3=set"]
+        assert session.cookies.get_dict() == {"hop3": "set", "hop2": "set", "hop1": "set"}
+        assert response.cookies.get_dict() == {"hop3": "set", "hop2": "set", "hop1": "set"}
+
+    def test_cookie_expired_on_a_hop_is_not_sent_on_the_next_one(self, server_url, session):
+        session.get(f"{server_url}/chain/2", allow_redirects=True)
+
+        response = session.get(f"{server_url}/expire-hop1", allow_redirects=True)
+
+        assert response.json()["cookie"] == "hop2=set"
+        assert session.cookies.get_dict() == {"hop2": "set"}
+
+    def test_cookies_set_on_every_hop_end_up_in_the_async_session_jar(self, server_url):
+        async def main():
+            async with AsyncSession() as session:
+                await session.get(f"{server_url}/chain/2", allow_redirects=True)
+                return session.cookies.get_dict(), (await session.get(f"{server_url}/headers")).json()
+
+        jar, received = asyncio.run(main())
+
+        assert jar == {"hop2": "set", "hop1": "set"}
+        assert sorted(received["cookie"].split("; ")) == ["hop1=set", "hop2=set"]

@@ -196,7 +196,6 @@ class TestExtractCookiesToJar:
         assert len(response_jar) == 0
         assert len(session_jar) == 0
 
-    @pytest.mark.xfail(reason="expired cookies are dropped from the response jar but stay in the session jar")
     def test_server_can_delete_a_session_cookie(self):
         session_jar = RequestsCookieJar()
         extract_cookies_to_jar("https://example.com/", {}, session_jar, {"Set-Cookie": ["sid=abc; Path=/"]})

@@ -5,7 +5,7 @@ from collections.abc import Mapping
 import pytest
 
 from tls_client import Session
-from tls_client.exceptions import TLSClientException
+from tls_client.exceptions import TLSClientException, TooManyRedirects
 
 URL = "https://example.com/path"
 
@@ -16,7 +16,9 @@ def header_values(headers: Mapping[str, str], name: str) -> list[str]:
 
 
 def sent_cookies(payload: dict) -> dict[str, str]:
-    return {cookie["name"]: cookie["value"] for cookie in payload["requestCookies"]}
+    """Cookies of the Cookie header the request was sent with."""
+    header = payload["headers"].get("Cookie", "")
+    return dict(pair.split("=", 1) for pair in header.split("; ") if pair)
 
 
 class TestUrl:
@@ -163,28 +165,74 @@ class TestCookies:
 
         session.get(URL, cookies={"token": "new"})
 
-        assert fake_lib.sent["requestCookies"] == [{"domain": "", "name": "token", "path": "/", "value": "new"}]
+        assert fake_lib.sent["headers"]["Cookie"] == "token=new"
 
-    def test_double_quotes_are_stripped_from_values(self, session, fake_lib):
-        session.get(URL, cookies={"quoted": '"abc"'})
-
-        assert sent_cookies(fake_lib.sent) == {"quoted": "abc"}
-
-    def test_expiry_is_only_sent_for_persistent_cookies(self, session, fake_lib):
-        session.cookies.set("session_only", "1")
-        session.cookies.set("persistent", "2", domain="example.com", path="/api", expires=4102444800)
+    def test_cookies_are_sent_in_a_header_and_the_library_keeps_no_jar(self, session, fake_lib):
+        session.cookies.set("a", "1")
 
         session.get(URL)
 
-        by_name = {cookie["name"]: cookie for cookie in fake_lib.sent["requestCookies"]}
-        assert by_name["session_only"] == {"domain": "", "name": "session_only", "path": "/", "value": "1"}
-        assert by_name["persistent"] == {
-            "domain": "example.com",
-            "name": "persistent",
-            "path": "/api",
-            "value": "2",
-            "expires": 4102444800,
-        }
+        assert fake_lib.sent["headers"]["Cookie"] == "a=1"
+        assert fake_lib.sent["withoutCookieJar"] is True
+        assert "requestCookies" not in fake_lib.sent
+
+    def test_no_cookie_header_without_cookies(self, session, fake_lib):
+        session.get(URL)
+
+        assert header_values(fake_lib.sent["headers"], "Cookie") == []
+
+    def test_only_cookies_for_the_domain_and_path_are_sent(self, session, fake_lib):
+        session.cookies.set("any_host", "1")
+        session.cookies.set("host", "2", domain="example.com")
+        session.cookies.set("parent_domain", "3", domain=".example.com")
+        session.cookies.set("sub_path", "4", domain="example.com", path="/path/sub")
+        session.cookies.set("other_path", "5", domain="example.com", path="/other")
+        session.cookies.set("other_host", "6", domain="other.example")
+        session.cookies.set("subdomain", "7", domain="www.example.com")
+
+        session.get(URL)
+
+        assert sent_cookies(fake_lib.sent) == {"any_host": "1", "host": "2", "parent_domain": "3"}
+
+    def test_secure_cookie_is_only_sent_over_https(self, session, fake_lib):
+        session.cookies.set("secure", "1", domain="example.com", secure=True)
+
+        session.get("http://example.com/")
+        assert sent_cookies(fake_lib.sent) == {}
+
+        session.get("https://example.com/")
+        assert sent_cookies(fake_lib.sent) == {"secure": "1"}
+
+    def test_expired_cookie_is_not_sent(self, session, fake_lib):
+        session.cookies.set("expired", "1", domain="example.com", expires=1)
+        session.cookies.set("persistent", "2", domain="example.com", expires=4102444800)
+
+        session.get(URL)
+
+        assert sent_cookies(fake_lib.sent) == {"persistent": "2"}
+
+    def test_cookies_cleared_from_the_jar_are_not_sent(self, session, fake_lib):
+        fake_lib.reply_with(headers={"Set-Cookie": ["a=1; Path=/"]})
+        session.get(URL)
+        session.get(URL)
+        assert sent_cookies(fake_lib.sent) == {"a": "1"}
+
+        session.cookies.clear()
+        session.get(URL)
+
+        assert sent_cookies(fake_lib.sent) == {}
+
+    def test_cookie_header_passed_in_is_sent_before_the_jar_cookies(self, session, fake_lib):
+        session.cookies.set("from_jar", "1")
+
+        session.get(URL, headers={"cookie": "from_header=2"})
+
+        assert header_values(fake_lib.sent["headers"], "Cookie") == ["from_header=2; from_jar=1"]
+
+    def test_quoted_value_is_sent_as_is(self, session, fake_lib):
+        session.get(URL, cookies={"quoted": '"abc"'})
+
+        assert sent_cookies(fake_lib.sent) == {"quoted": '"abc"'}
 
     def test_cookies_from_the_response_are_kept_for_the_next_request(self, session, fake_lib):
         fake_lib.reply_with(headers={"Set-Cookie": ["a=1; Path=/", "b=2; Path=/"]})
@@ -195,6 +243,204 @@ class TestCookies:
         assert dict(response.cookies) == {"a": "1", "b": "2"}
         assert dict(session.cookies) == {"a": "1", "b": "2"}
         assert sent_cookies(fake_lib.sent) == {"a": "1", "b": "2"}
+
+
+def redirect(status: int = 302, location: str = "/next", **headers: list[str]) -> dict:
+    """Reply fields for a redirect to location."""
+    return {"status": status, "headers": {"Location": [location], **headers}}
+
+
+class TestRedirects:
+    def test_not_followed_by_default(self, session, fake_lib):
+        fake_lib.reply_with(**redirect())
+
+        response = session.get(URL)
+
+        assert response.status_code == 302
+        assert response.history == []
+        assert len(fake_lib.payloads) == 1
+        assert fake_lib.sent["followRedirects"] is False
+
+    def test_chain_is_followed_in_python_and_every_hop_is_kept_in_history(self, session, fake_lib):
+        fake_lib.reply_with(**redirect(301, "/second"))
+        fake_lib.reply_with(**redirect(302, "https://example.com/third"))
+
+        response = session.get(URL, allow_redirects=True)
+
+        assert response.status_code == 200
+        assert response.url == "https://example.com/third"
+        assert [r.status_code for r in response.history] == [301, 302]
+        assert [r.url for r in response.history] == [URL, "https://example.com/second"]
+        assert [p["requestUrl"] for p in fake_lib.payloads] == [
+            URL,
+            "https://example.com/second",
+            "https://example.com/third",
+        ]
+        # The library must not follow them itself, or the cookies of the hops are lost.
+        assert all(p["followRedirects"] is False for p in fake_lib.payloads)
+        assert all(p["withoutCookieJar"] is True for p in fake_lib.payloads)
+
+    def test_cookies_set_on_every_hop_are_stored_and_sent_on_the_next_one(self, session, fake_lib):
+        fake_lib.reply_with(**redirect(location="/second", **{"Set-Cookie": ["a=1; Path=/"]}))
+        fake_lib.reply_with(**redirect(location="/third", **{"Set-Cookie": ["b=2; Path=/"]}))
+        fake_lib.reply_with(headers={"Set-Cookie": ["c=3; Path=/"]})
+
+        response = session.get(URL, allow_redirects=True)
+
+        assert [sent_cookies(p) for p in fake_lib.payloads] == [{}, {"a": "1"}, {"a": "1", "b": "2"}]
+        assert dict(session.cookies) == {"a": "1", "b": "2", "c": "3"}
+        assert dict(response.cookies) == {"a": "1", "b": "2", "c": "3"}
+        assert [dict(r.cookies) for r in response.history] == [{"a": "1"}, {"b": "2"}]
+
+    def test_cookie_changed_on_a_hop_is_sent_with_its_new_value(self, session, fake_lib):
+        session.cookies.set("token", "old", domain="example.com")
+        fake_lib.reply_with(**redirect(**{"Set-Cookie": ["token=new; Path=/"]}))
+
+        session.get(URL, allow_redirects=True)
+
+        assert sent_cookies(fake_lib.payloads[0]) == {"token": "old"}
+        assert sent_cookies(fake_lib.sent) == {"token": "new"}
+
+    def test_request_cookies_are_sent_on_every_hop(self, session, fake_lib):
+        fake_lib.reply_with(**redirect())
+
+        session.get(URL, cookies={"per_request": "1"}, allow_redirects=True)
+
+        assert [sent_cookies(p) for p in fake_lib.payloads] == [{"per_request": "1"}, {"per_request": "1"}]
+
+    def test_cookies_of_one_host_are_not_sent_to_another(self, session, fake_lib):
+        fake_lib.reply_with(**redirect(location="https://other.example/", **{"Set-Cookie": ["a=1; Path=/"]}))
+
+        session.get(URL, allow_redirects=True)
+
+        assert sent_cookies(fake_lib.sent) == {}
+        assert session.cookies.list_domains() == ["example.com"]
+
+    @pytest.mark.parametrize(
+        ("url", "location", "expected"),
+        [
+            ("https://example.com/a/b", "c", "https://example.com/a/c"),
+            ("https://example.com/a/b", "../c?x=1", "https://example.com/c?x=1"),
+            ("https://example.com/a/b", "//other.example/c", "https://other.example/c"),
+            ("https://example.com/a#top", "/b", "https://example.com/b#top"),
+            ("https://example.com/a#top", "/b#bottom", "https://example.com/b#bottom"),
+        ],
+    )
+    def test_location_is_resolved_against_the_current_url(self, session, fake_lib, url, location, expected):
+        fake_lib.reply_with(**redirect(location=location))
+
+        response = session.get(url, allow_redirects=True)
+
+        assert fake_lib.sent["requestUrl"] == expected
+        assert response.url == expected
+
+    @pytest.mark.parametrize(
+        ("status", "method", "expected_method"),
+        [
+            (301, "POST", "GET"),
+            (302, "POST", "GET"),
+            (303, "POST", "GET"),
+            (303, "PUT", "GET"),
+            (303, "HEAD", "HEAD"),
+            (301, "PUT", "PUT"),
+            (302, "DELETE", "DELETE"),
+            (307, "POST", "POST"),
+            (308, "PUT", "PUT"),
+        ],
+    )
+    def test_body_is_only_dropped_when_the_method_changes(self, session, fake_lib, status, method, expected_method):
+        fake_lib.reply_with(**redirect(status))
+
+        session.execute_request(method, URL, json={"a": 1}, headers={"Content-Length": "8"}, allow_redirects=True)
+
+        first, second = fake_lib.payloads
+        assert second["requestMethod"] == expected_method
+        if expected_method == method:
+            assert second["requestBody"] == first["requestBody"] == '{"a": 1}'
+            assert second["headers"]["Content-Type"] == "application/json"
+            assert second["headers"]["Content-Length"] == "8"
+        else:
+            assert second["requestBody"] is None
+            assert "Content-Type" not in second["headers"]
+            assert "Content-Length" not in second["headers"]
+
+    def test_binary_body_is_sent_again_on_a_307(self, session, fake_lib):
+        fake_lib.reply_with(**redirect(307))
+
+        session.post(URL, data=b"\x00\xff", allow_redirects=True)
+
+        assert fake_lib.sent["isByteRequest"] is True
+        assert base64.b64decode(fake_lib.sent["requestBody"]) == b"\x00\xff"
+
+    @pytest.mark.parametrize(
+        ("url", "location", "stripped"),
+        [
+            ("https://example.com/", "/next", False),
+            ("https://example.com/", "https://example.com:443/next", False),
+            ("http://example.com/", "https://example.com/next", False),
+            ("https://example.com/", "https://other.example/", True),
+            ("https://example.com/", "https://www.example.com/", True),
+            ("https://example.com/", "http://example.com/", True),
+            ("https://example.com/", "https://example.com:8443/", True),
+        ],
+    )
+    def test_credentials_are_not_sent_to_another_origin(self, session, fake_lib, url, location, stripped):
+        fake_lib.reply_with(**redirect(location=location))
+
+        session.get(url, headers={"Authorization": "Bearer secret", "Cookie": "passed=1"}, allow_redirects=True)
+
+        sent = fake_lib.sent["headers"]
+        if stripped:
+            assert "Authorization" not in sent
+            assert "Cookie" not in sent
+        else:
+            assert sent["Authorization"] == "Bearer secret"
+            assert sent["Cookie"] == "passed=1"
+
+    def test_other_headers_are_sent_on_every_hop(self, session, fake_lib):
+        fake_lib.reply_with(**redirect(location="https://other.example/"))
+
+        session.get(URL, headers={"X-Custom": "1"}, allow_redirects=True)
+
+        assert fake_lib.sent["headers"]["X-Custom"] == "1"
+        assert fake_lib.sent["headers"]["User-Agent"] == session.headers["User-Agent"]
+
+    @pytest.mark.parametrize("reply", [{"status": 302, "headers": {}}, redirect(300), redirect(304)])
+    def test_response_that_is_no_redirect_is_returned(self, session, fake_lib, reply):
+        fake_lib.reply_with(**reply)
+
+        response = session.get(URL, allow_redirects=True)
+
+        assert response.status_code == reply["status"]
+        assert len(fake_lib.payloads) == 1
+
+    def test_up_to_30_redirects_are_followed(self, session, fake_lib):
+        for _ in range(30):
+            fake_lib.reply_with(**redirect())
+
+        response = session.get(URL, allow_redirects=True)
+
+        assert response.status_code == 200
+        assert len(response.history) == 30
+
+    def test_more_than_30_redirects_raise(self, session, fake_lib):
+        for _ in range(31):
+            fake_lib.reply_with(**redirect())
+
+        with pytest.raises(TooManyRedirects, match="30 redirects"):
+            session.get(URL, allow_redirects=True)
+
+        assert len(fake_lib.payloads) == 31
+        assert issubclass(TooManyRedirects, TLSClientException)
+
+    def test_library_error_on_a_hop_is_raised(self, session, fake_lib):
+        fake_lib.reply_with(**redirect())
+        fake_lib.reply_with(status=0, body="failed to do request: connection refused")
+
+        with pytest.raises(TLSClientException, match="connection refused"):
+            session.get(URL, allow_redirects=True)
+
+        assert fake_lib.freed_ids == ["response-1", "response-2"]
 
 
 class TestTransportOptions:
@@ -249,7 +495,6 @@ class TestTransportOptions:
             ({"force_http1": True}, {}, "forceHttp1"),
             ({"catch_panics": True}, {}, "catchPanics"),
             ({"debug": True}, {}, "withDebug"),
-            ({}, {"allow_redirects": True}, "followRedirects"),
             ({}, {"insecure_skip_verify": True}, "insecureSkipVerify"),
         ],
     )
