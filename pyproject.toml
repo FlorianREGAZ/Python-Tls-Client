@@ -38,7 +38,10 @@ Source = "https://github.com/FlorianREGAZ/Python-Tls-Client"
 path = "tls_client/__version__.py"
 
 [tool.hatch.build.targets.sdist]
-include = ["/tls_client", "/README.md", "/LICENSE"]
+include = ["/tls_client", "/hatch_build.py", "/scripts/fetch_library.py", "/README.md", "/LICENSE"]
+
+# hatch_build.py adds the native library and tags the wheel for its platform.
+[tool.hatch.build.targets.wheel.hooks.custom]
 
 [dependency-groups]
 dev = [

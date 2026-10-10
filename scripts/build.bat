@@ -1,2 +1,0 @@
-uv build
-uv publish
