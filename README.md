@@ -141,6 +141,25 @@ Windows / 32-bit:
 --add-binary '{path_to_library}/tls_client/dependencies/tls-client-windows-32.dll;tls_client/dependencies'
 ```
 
+# Native library
+The TLS and HTTP work is done by [bogdanfinn/tls-client](https://github.com/bogdanfinn/tls-client), a Go library that its author builds into shared libraries with [`cffi_dist/build.sh`](https://github.com/bogdanfinn/tls-client/blob/v1.16.0/cffi_dist/build.sh). This project compiles nothing: each wheel contains one unmodified asset from the upstream [v1.16.0 release](https://github.com/bogdanfinn/tls-client/releases/tag/v1.16.0), renamed without the version.
+
+| Library | Upstream release asset |
+| --- | --- |
+| `tls-client-darwin-amd64.dylib` | `tls-client-darwin-amd64-1.16.0.dylib` |
+| `tls-client-darwin-arm64.dylib` | `tls-client-darwin-arm64-1.16.0.dylib` |
+| `tls-client-linux-arm64.so` | `tls-client-linux-arm64-1.16.0.so` |
+| `tls-client-linux-ubuntu-amd64.so` | `tls-client-linux-ubuntu-amd64-1.16.0.so` |
+| `tls-client-windows-32.dll` | `tls-client-windows-32-1.16.0.dll` |
+| `tls-client-windows-64.dll` | `tls-client-windows-64-1.16.0.dll` |
+
+[`tls_client/dependencies/SHA256SUMS`](tls_client/dependencies/SHA256SUMS) lists the SHA-256 of every library, and each one matches the digest GitHub shows for the release asset. To check an installed library, run this in the installed `tls_client/dependencies` directory (on macOS, `shasum -a 256` instead of `sha256sum`):
+```
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
+A source checkout has no library; download the one for your platform with `python scripts/fetch_library.py <library>`, which checks it against `SHA256SUMS`. To move to a new upstream release, change `VERSION` in `scripts/fetch_library.py` and run `python scripts/fetch_library.py --update-checksums`: it downloads every library, checks it against the digest GitHub lists for the asset, and rewrites `SHA256SUMS`. Upstream doesn't publish a checksum file of its own.
+
 # Acknowledgements
 Big shout out to [Bogdanfinn](https://github.com/bogdanfinn) for open sourcing his [tls-client](https://github.com/bogdanfinn/tls-client) in Golang.
 Also I wanted to keep the syntax as similar as possible to [requests](https://github.com/psf/requests), as most people use it and are familiar with it!
