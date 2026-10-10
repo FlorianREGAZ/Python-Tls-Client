@@ -14,7 +14,7 @@ import tls_client
 # more client identifiers can be found in settings.py
 
 session = tls_client.Session(
-    client_identifier="chrome112",
+    client_identifier="chrome_112",
     random_tls_extension_order=True
 )
 

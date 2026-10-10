@@ -308,6 +308,7 @@ class Session:
         params: Optional[dict] = None,  # Optional[dict[str, str]]
         data: Optional[Union[str, dict]] = None,
         headers: Optional[dict] = None,  # Optional[dict[str, str]]
+        header_order: Optional[List[str]] = None,
         cookies: Optional[dict] = None,  # Optional[dict[str, str]]
         json: Optional[dict] = None,  # Optional[dict]
         allow_redirects: Optional[bool] = False,
@@ -354,6 +355,11 @@ class Session:
 
             headers = merged_headers
 
+        # Ability to overwrite self.header_order for flexibility
+        request_header_order = self.header_order
+        if header_order:
+            request_header_order = header_order
+
         # --- Cookies --------------------------------------------------------------------------------------------------
         cookies = cookies or {}
         # Merge with session cookies
@@ -394,7 +400,7 @@ class Session:
             "withDebug": self.debug,
             "catchPanics": self.catch_panics,
             "headers": dict(headers),
-            "headerOrder": self.header_order,
+            "headerOrder": request_header_order,
             "insecureSkipVerify": insecure_skip_verify,
             "isByteRequest": is_byte_request,
             "additionalDecode": self.additional_decode,
