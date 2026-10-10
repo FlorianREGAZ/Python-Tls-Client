@@ -129,11 +129,12 @@ class TestFailures:
             session.get(f"{httpbin.url}/delay/2")
 
     @pytest.mark.xfail(reason="the native session keeps the timeout of its first request")
-    def test_request_timeout_applies_after_the_first_request(self, httpbin, session):
+    @pytest.mark.parametrize("kwarg", ["timeout", "timeout_seconds"])
+    def test_request_timeout_applies_after_the_first_request(self, httpbin, session, kwarg):
         session.get(f"{httpbin.url}/get")
 
         with pytest.raises(TLSClientException, match="Timeout exceeded"):
-            session.get(f"{httpbin.url}/delay/2", timeout_seconds=1)
+            session.get(f"{httpbin.url}/delay/2", **{kwarg: 1})
 
 
 class TestCertificateVerification:

@@ -220,14 +220,28 @@ class TestTransportOptions:
 
         assert fake_lib.sent["proxyUrl"] == "http://request-proxy:8080"
 
-    def test_request_timeout_wins_over_session_timeout(self, session, fake_lib):
+    @pytest.mark.parametrize("kwarg", ["timeout", "timeout_seconds"])
+    def test_request_timeout_wins_over_session_timeout(self, session, fake_lib, kwarg):
         session.timeout_seconds = 12
 
         session.get(URL)
-        assert fake_lib.sent["timeoutSeconds"] == 12
+        assert fake_lib.sent["timeoutMilliseconds"] == 12_000
 
-        session.get(URL, timeout_seconds=3)
-        assert fake_lib.sent["timeoutSeconds"] == 3
+        session.get(URL, **{kwarg: 3})
+        assert fake_lib.sent["timeoutMilliseconds"] == 3_000
+
+    def test_timeout_is_sent_in_milliseconds_only(self, session, fake_lib):
+        session.get(URL, timeout=2.5)
+
+        assert fake_lib.sent["timeoutMilliseconds"] == 2_500
+        # The library refuses a request that sets both.
+        assert "timeoutSeconds" not in fake_lib.sent
+
+    def test_timeout_and_timeout_seconds_together_are_rejected(self, session, fake_lib):
+        with pytest.raises(ValueError, match="not both"):
+            session.get(URL, timeout=1, timeout_seconds=2)
+
+        assert fake_lib.payloads == []
 
     @pytest.mark.parametrize(
         ("session_kwargs", "request_kwargs", "payload_key"),

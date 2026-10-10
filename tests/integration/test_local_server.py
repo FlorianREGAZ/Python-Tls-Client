@@ -5,12 +5,14 @@ import base64
 import json
 import os
 import threading
+import time
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
 from tls_client import Session
+from tls_client.exceptions import TLSClientException
 
 pytestmark = pytest.mark.integration
 
@@ -19,6 +21,8 @@ PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
 )
 LARGE = os.urandom(8 * 1024 * 1024)
+# How long /slow takes to answer.
+SLOW_SECONDS = 0.6
 
 # Path -> (Content-Type, body)
 BODIES = {
@@ -38,6 +42,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         if self.path == "/headers":
             self.echo_headers()
+        elif self.path == "/slow":
+            time.sleep(SLOW_SECONDS)
+            self.reply("text/plain", b"done")
         else:
             content_type, body = BODIES[self.path]
             self.reply(content_type, body, {"x-MiXeD-case": "yes"})
@@ -56,8 +63,12 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         for name, value in (extra_headers or {}).items():
             self.send_header(name, value)
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.end_headers()
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            # The client gave up waiting, as the timeout tests make it do.
+            pass
 
     def log_message(self, format: str, *args: object) -> None:
         pass
@@ -136,3 +147,19 @@ class TestHeaders:
 
         assert from_session["content-type"] == "application/vnd.api+json"
         assert from_request["content-type"] == "text/plain"
+
+
+class TestTimeout:
+    @pytest.mark.parametrize("kwarg", ["timeout", "timeout_seconds"])
+    def test_fractional_timeout_is_applied(self, server_url, session, kwarg):
+        with pytest.raises(TLSClientException, match="Timeout exceeded"):
+            session.get(f"{server_url}/slow", **{kwarg: SLOW_SECONDS / 3})
+
+    def test_response_within_the_timeout_arrives(self, server_url, session):
+        assert session.get(f"{server_url}/slow", timeout=SLOW_SECONDS * 4).text == "done"
+
+    def test_fractional_session_timeout_is_applied(self, server_url, session):
+        session.timeout_seconds = SLOW_SECONDS / 3
+
+        with pytest.raises(TLSClientException, match="Timeout exceeded"):
+            session.get(f"{server_url}/slow")
