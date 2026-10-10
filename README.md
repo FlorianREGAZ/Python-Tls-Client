@@ -45,6 +45,8 @@ Example 2 - Custom:
 import tls_client
 
 session = tls_client.Session(
+    # None switches from a preset to the settings below. Without it they are all ignored.
+    client_identifier=None,
     ja3_string="771,4865-4866-4867-49195-49199-49196-49200-52393-52392-49171-49172-156-157-47-53,0-23-65281-10-11-35-16-5-13-18-51-45-43-27-17513,29-23-24,0",
     h2_settings={
         "HEADER_TABLE_SIZE": 65536,
@@ -71,6 +73,9 @@ session = tls_client.Session(
     supported_versions=["GREASE", "1.3", "1.2"],
     key_share_curves=["GREASE", "X25519"],
     cert_compression_algo="brotli",
+    # The JA3 contains ALPN (16) and ALPS (17513), these fill them in.
+    alpn_protocols=["h2", "http/1.1"],
+    alps_protocols=["h2"],
     pseudo_header_order=[
         ":method",
         ":authority",

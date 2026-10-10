@@ -276,6 +276,8 @@ class TestTlsProfile:
             connection_flow=15663105,
             priority_frames=priority_frames,
             header_priority={"streamDep": 1, "exclusive": True, "weight": 1},
+            alpn_protocols=["http/1.1"],
+            alps_protocols=["h2"],
         ) as session:
             session.get(URL)
 
@@ -293,7 +295,17 @@ class TestTlsProfile:
             "supportedSignatureAlgorithms": ["ECDSAWithP256AndSHA256"],
             "supportedDelegatedCredentialsAlgorithms": ["PSSWithSHA256"],
             "keyShareCurves": ["X25519"],
+            "alpnProtocols": ["http/1.1"],
+            "alpsProtocols": ["h2"],
         }
+
+    def test_custom_settings_offer_h2_and_http1_over_alpn_by_default(self, fake_lib):
+        # The JA3 extension 16 is sent with whatever is here, and servers reject it empty.
+        with Session(client_identifier=None, ja3_string="771,4865,0-16,29,0") as session:
+            session.get(URL)
+
+        assert fake_lib.sent["customTlsClient"]["alpnProtocols"] == ["h2", "http/1.1"]
+        assert fake_lib.sent["customTlsClient"]["alpsProtocols"] is None
 
 
 class TestLifecycle:

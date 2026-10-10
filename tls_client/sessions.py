@@ -47,6 +47,8 @@ class Session:
         catch_panics: bool = False,
         debug: bool = False,
         certificate_pinning: dict[str, list[str]] | None = None,
+        alpn_protocols: list[str] | None = None,
+        alps_protocols: list[str] | None = None,
     ) -> None:
         # The library silently falls back to its default profile for unknown names, so catch typos here instead.
         if client_identifier is not None and client_identifier not in CLIENT_IDENTIFIERS:
@@ -219,6 +221,22 @@ class Session:
         # Cert Compression Algorithm
         # Examples: "zlib", "brotli", "zstd"
         self.cert_compression_algo = cert_compression_algo
+
+        # ALPN Protocols, sent in the application_layer_protocol_negotiation extension (16) of the JA3
+        # Defaults to h2 and http/1.1 like the presets. Servers abort the handshake if the extension is sent empty.
+        # Example:
+        # [
+        #     "h2",
+        #     "http/1.1"
+        # ]
+        self.alpn_protocols = ["h2", "http/1.1"] if alpn_protocols is None else alpn_protocols
+
+        # ALPS Protocols, sent in the application_settings extension (17513 or 17613) of the JA3
+        # Example:
+        # [
+        #     "h2"
+        # ]
+        self.alps_protocols = alps_protocols
 
         # Additional Decode
         # Make sure the go code decodes the response body once explicit by provided algorithm.
@@ -447,6 +465,8 @@ class Session:
                 "supportedSignatureAlgorithms": self.supported_signature_algorithms,
                 "supportedDelegatedCredentialsAlgorithms": self.supported_delegated_credentials_algorithms,
                 "keyShareCurves": self.key_share_curves,
+                "alpnProtocols": self.alpn_protocols,
+                "alpsProtocols": self.alps_protocols,
             }
         else:
             request_payload["tlsClientIdentifier"] = self.client_identifier
