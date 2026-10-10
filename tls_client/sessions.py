@@ -9,6 +9,7 @@ from json import dumps, loads
 from typing import Any, TypeAlias
 
 from .__version__ import __version__
+from ._multipart import Files, encode_multipart
 from .cffi import destroySession, freeMemory, request
 from .cookies import cookiejar_from_dict, extract_cookies_to_jar, merge_cookies
 from .exceptions import TLSClientException
@@ -16,8 +17,8 @@ from .response import Response, build_response
 from .settings import CLIENT_IDENTIFIERS, ClientIdentifiers
 from .structures import CaseInsensitiveDict
 
-# Request body: str and bytes are sent as-is, a mapping is form-encoded.
-_Data: TypeAlias = str | bytes | Mapping[str, Any]
+# Request body: str and bytes are sent as-is, a mapping or a list of (name, value) pairs is form-encoded.
+_Data: TypeAlias = str | bytes | Mapping[str, Any] | list[tuple[str, Any]]
 # JSON body: dicts and lists are serialized, a str is sent as-is.
 _Json: TypeAlias = dict[str, Any] | list[Any] | str
 # Either a proxy URL, or a dict whose "http" entry is used.
@@ -345,6 +346,7 @@ class Session:
         timeout_seconds: float | None = None,
         proxy: _Proxy | None = None,
         timeout: float | None = None,
+        files: Files | None = None,
     ) -> Response:
         """Sends a request and returns its Response.
 
@@ -361,10 +363,17 @@ class Session:
 
         # --- Request Body ---------------------------------------------------------------------------------------------
         # Prepare request body - build request body
-        # Data has priority. JSON is only used if data is None.
+        # Files are sent as multipart/form-data, with the fields of data before them.
+        # Otherwise data has priority. JSON is only used if data is None.
         request_body: str | bytes | None
         content_type: str | None
-        if data is None and json is not None:
+        if files:
+            if json is not None:
+                raise ValueError("files can't be sent with json; pass the other form fields in data instead")
+            if isinstance(data, (str, bytes)):
+                raise ValueError("files can't be sent with str or bytes data; pass the form fields as a dict instead")
+            request_body, content_type = encode_multipart(data, files)
+        elif data is None and json is not None:
             request_body = dumps(json) if isinstance(json, (dict, list)) else json
             content_type = "application/json"
         elif data is None or isinstance(data, (str, bytes)):
@@ -511,17 +520,38 @@ class Session:
         """Sends a HEAD request"""
         return self.execute_request(method="HEAD", url=url, **kwargs)
 
-    def post(self, url: str, data: _Data | None = None, json: _Json | None = None, **kwargs: Any) -> Response:
+    def post(
+        self,
+        url: str,
+        data: _Data | None = None,
+        json: _Json | None = None,
+        files: Files | None = None,
+        **kwargs: Any,
+    ) -> Response:
         """Sends a POST request"""
-        return self.execute_request(method="POST", url=url, data=data, json=json, **kwargs)
+        return self.execute_request(method="POST", url=url, data=data, json=json, files=files, **kwargs)
 
-    def put(self, url: str, data: _Data | None = None, json: _Json | None = None, **kwargs: Any) -> Response:
+    def put(
+        self,
+        url: str,
+        data: _Data | None = None,
+        json: _Json | None = None,
+        files: Files | None = None,
+        **kwargs: Any,
+    ) -> Response:
         """Sends a PUT request"""
-        return self.execute_request(method="PUT", url=url, data=data, json=json, **kwargs)
+        return self.execute_request(method="PUT", url=url, data=data, json=json, files=files, **kwargs)
 
-    def patch(self, url: str, data: _Data | None = None, json: _Json | None = None, **kwargs: Any) -> Response:
+    def patch(
+        self,
+        url: str,
+        data: _Data | None = None,
+        json: _Json | None = None,
+        files: Files | None = None,
+        **kwargs: Any,
+    ) -> Response:
         """Sends a PATCH request"""
-        return self.execute_request(method="PATCH", url=url, data=data, json=json, **kwargs)
+        return self.execute_request(method="PATCH", url=url, data=data, json=json, files=files, **kwargs)
 
     def delete(self, url: str, **kwargs: Any) -> Response:
         """Sends a DELETE request"""
