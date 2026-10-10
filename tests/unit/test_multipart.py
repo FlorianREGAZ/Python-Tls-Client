@@ -5,10 +5,10 @@ from collections.abc import Mapping
 
 import pytest
 
-import tls_client._multipart
+import tls_client.multipart
 
 URL = "https://example.com/upload"
-RANDOM_BOUNDARY = tls_client._multipart.choose_boundary
+RANDOM_BOUNDARY = tls_client.multipart.choose_boundary
 
 
 def header_values(headers: Mapping[str, str], name: str) -> list[str]:
@@ -30,7 +30,7 @@ END = b"--BOUNDARY--\r\n"
 
 @pytest.fixture(autouse=True)
 def fixed_boundary(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(tls_client._multipart, "choose_boundary", lambda: "BOUNDARY")
+    monkeypatch.setattr(tls_client.multipart, "choose_boundary", lambda: "BOUNDARY")
 
 
 class TestFiles:
@@ -129,7 +129,7 @@ class TestFiles:
         )
 
     def test_boundary_is_random_and_matches_the_header(self, session, fake_lib, monkeypatch):
-        monkeypatch.setattr(tls_client._multipart, "choose_boundary", RANDOM_BOUNDARY)
+        monkeypatch.setattr(tls_client.multipart, "choose_boundary", RANDOM_BOUNDARY)
 
         session.post(URL, files={"f": ("a.txt", b"x")})
         session.post(URL, files={"f": ("a.txt", b"x")})

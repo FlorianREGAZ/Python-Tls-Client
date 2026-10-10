@@ -9,10 +9,10 @@ from json import dumps, loads
 from typing import Any, TypeAlias
 
 from .__version__ import __version__
-from ._multipart import Files, encode_multipart
 from .cffi import destroySession, freeMemory, request
 from .cookies import cookiejar_from_dict, extract_cookies_to_jar, merge_cookies
 from .exceptions import TLSClientException
+from .multipart import Files, encode_multipart
 from .response import Response, build_response
 from .settings import CLIENT_IDENTIFIERS, ClientIdentifiers
 from .structures import CaseInsensitiveDict

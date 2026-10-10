@@ -53,7 +53,8 @@ class TestRequestBody:
 
     def test_files_and_form_fields_reach_the_server_as_multipart(self, httpbin, session, tmp_path):
         path = tmp_path / "notes.txt"
-        path.write_text("café\n", encoding="utf-8")
+        # write_bytes, so Windows doesn't turn the newline into \r\n
+        path.write_bytes("café\n".encode())
 
         with path.open("rb") as f:
             response = session.post(
