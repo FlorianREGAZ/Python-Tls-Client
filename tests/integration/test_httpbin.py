@@ -3,6 +3,7 @@ import socket
 from collections.abc import Iterator
 
 import pytest
+from httpbin.core import resource as httpbin_resource
 
 from tls_client import Session
 from tls_client.exceptions import TLSClientException
@@ -78,13 +79,11 @@ class TestResponse:
 
         assert "∮ E⋅da = Q" in response.text
 
-    @pytest.mark.xfail(reason="the library hands the body over as text, so bytes that are not UTF-8 get mangled")
     def test_binary_body_arrives_unchanged(self, httpbin, session):
-        payload = b"\x89PNG\r\n\x1a\n"
+        response = session.get(f"{httpbin.url}/image/png")
 
-        response = session.get(f"{httpbin.url}/base64/{base64.urlsafe_b64encode(payload).decode()}")
-
-        assert response.content == payload
+        # httpbin serves this file from its package data.
+        assert response.content == httpbin_resource("images/pig_icon.png")
 
 
 class TestRedirects:
@@ -130,11 +129,12 @@ class TestFailures:
             session.get(f"{httpbin.url}/delay/2")
 
     @pytest.mark.xfail(reason="the native session keeps the timeout of its first request")
-    def test_request_timeout_applies_after_the_first_request(self, httpbin, session):
+    @pytest.mark.parametrize("kwarg", ["timeout", "timeout_seconds"])
+    def test_request_timeout_applies_after_the_first_request(self, httpbin, session, kwarg):
         session.get(f"{httpbin.url}/get")
 
         with pytest.raises(TLSClientException, match="Timeout exceeded"):
-            session.get(f"{httpbin.url}/delay/2", timeout_seconds=1)
+            session.get(f"{httpbin.url}/delay/2", **{kwarg: 1})
 
 
 class TestCertificateVerification:

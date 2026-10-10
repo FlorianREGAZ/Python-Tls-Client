@@ -87,8 +87,8 @@ class Session:
         # CookieJar containing all currently outstanding cookies set on this session
         self.cookies = cookiejar_from_dict({})
 
-        # Timeout
-        self.timeout_seconds = 30
+        # Timeout in seconds (int or float) for requests that don't pass timeout
+        self.timeout_seconds: float = 30
 
         # Certificate pinning
         self.certificate_pinning = certificate_pinning
@@ -342,9 +342,18 @@ class Session:
         json: _Json | None = None,
         allow_redirects: bool = False,
         insecure_skip_verify: bool = False,
-        timeout_seconds: int | None = None,
+        timeout_seconds: float | None = None,
         proxy: _Proxy | None = None,
+        timeout: float | None = None,
     ) -> Response:
+        """Sends a request and returns its Response.
+
+        timeout is how many seconds (int or float) to wait for the response, like in requests. timeout_seconds is
+        the older name for it; passing both raises ValueError. Without either, self.timeout_seconds applies.
+
+        The native library sets a session's timeout when the session sends its first request and keeps it, so a
+        different timeout on a later request of the same session has no effect. Use a new Session for that.
+        """
         # --- URL ------------------------------------------------------------------------------------------------------
         # Prepare URL - add params to url
         if params is not None:
@@ -364,26 +373,20 @@ class Session:
         else:
             request_body = urllib.parse.urlencode(data, doseq=True)
             content_type = "application/x-www-form-urlencoded"
-        # set content type if it isn't set
-        if content_type is not None and "content-type" not in self.headers:
-            self.headers["Content-Type"] = content_type
-
         # --- Headers --------------------------------------------------------------------------------------------------
-        request_headers: Mapping[str, str | None]
-        if self.headers is None:
-            request_headers = CaseInsensitiveDict(headers)
-        elif headers is None:
-            request_headers = self.headers
-        else:
-            merged_headers: CaseInsensitiveDict[str | None] = CaseInsensitiveDict(self.headers)
-            merged_headers.update(headers)
+        # Merge into a copy, so nothing set for this request sticks to self.headers.
+        request_headers: CaseInsensitiveDict[str | None] = CaseInsensitiveDict(self.headers)
+        if headers is not None:
+            request_headers.update(headers)
 
-            # Remove items, where the key or value is set to None.
-            none_keys = [k for (k, v) in merged_headers.items() if v is None or k is None]
-            for key in none_keys:
-                del merged_headers[key]
+        # set content type if neither the session nor the request set one (setting it to None sends none)
+        if content_type is not None and "content-type" not in request_headers:
+            request_headers["Content-Type"] = content_type
 
-            request_headers = merged_headers
+        # Remove items, where the key or value is set to None.
+        none_keys = [k for (k, v) in request_headers.items() if v is None or k is None]
+        for key in none_keys:
+            del request_headers[key]
 
         # Ability to overwrite self.header_order for flexibility
         request_header_order = self.header_order
@@ -418,9 +421,11 @@ class Session:
             proxy_url = ""
 
         # --- Timeout --------------------------------------------------------------------------------------------------
-        # maximum time to wait for a response
+        # maximum time to wait for a response. timeout is the requests-style name for timeout_seconds.
+        if timeout is not None and timeout_seconds is not None:
+            raise ValueError("Pass either timeout or timeout_seconds, not both")
 
-        timeout_seconds = timeout_seconds or self.timeout_seconds
+        request_timeout = timeout or timeout_seconds or self.timeout_seconds
 
         # --- Certificate pinning --------------------------------------------------------------------------------------
         # pins a certificate so that it restricts which certificates are considered valid
@@ -439,6 +444,8 @@ class Session:
             "headerOrder": request_header_order,
             "insecureSkipVerify": insecure_skip_verify,
             "isByteRequest": is_byte_request,
+            # Return the body as base64 so binary bodies survive; build_response decodes it.
+            "isByteResponse": True,
             "additionalDecode": self.additional_decode,
             "proxyUrl": proxy_url,
             "requestUrl": url,
@@ -447,7 +454,8 @@ class Session:
             if isinstance(request_body, (bytes, bytearray))
             else request_body,
             "requestCookies": request_cookies,
-            "timeoutSeconds": timeout_seconds,
+            # Milliseconds, so fractions of a second work. The library rejects timeoutSeconds alongside it.
+            "timeoutMilliseconds": round(request_timeout * 1000),
         }
         if certificate_pinning:
             request_payload["certificatePinningHosts"] = certificate_pinning
@@ -472,14 +480,9 @@ class Session:
             request_payload["tlsClientIdentifier"] = self.client_identifier
             request_payload["withRandomTLSExtensionOrder"] = self.random_tls_extension_order
 
-        # this is a pointer to the response
-        response = request(dumps(request_payload).encode("utf-8"))
-        # dereference the pointer to a byte array
-        response_bytes = ctypes.string_at(response)
-        # convert our byte array to a string (tls client returns json)
-        response_string = response_bytes.decode("utf-8")
-        # convert response string to json
-        response_object = loads(response_string)
+        # dereference the pointer to the response, decode it and parse it (tls client returns json). None of the steps
+        # is bound to a name, so each copy of a large reply is freed as soon as the next one exists.
+        response_object = loads(ctypes.string_at(request(dumps(request_payload).encode("utf-8"))).decode("utf-8"))
         # free the memory
         freeMemory(response_object["id"].encode("utf-8"))
         # --- Response -------------------------------------------------------------------------------------------------

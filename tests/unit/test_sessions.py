@@ -73,6 +73,11 @@ class TestBody:
         assert fake_lib.sent["isByteRequest"] is True
         assert base64.b64decode(fake_lib.sent["requestBody"]) == body
 
+    def test_response_body_is_requested_as_bytes(self, session, fake_lib):
+        session.get(URL)
+
+        assert fake_lib.sent["isByteResponse"] is True
+
     def test_data_takes_precedence_over_json(self, session, fake_lib):
         session.post(URL, data={"from": "data"}, json={"from": "json"})
 
@@ -90,13 +95,19 @@ class TestBody:
 
         assert header_values(fake_lib.sent["headers"], "Content-Type") == ["text/plain"]
 
-    @pytest.mark.xfail(reason="the inferred Content-Type is written into session.headers and sticks to later requests")
     def test_inferred_content_type_applies_to_one_request_only(self, session, fake_lib):
         session.post(URL, json={"a": 1})
         session.post(URL, data={"a": "1"})
-
         assert header_values(fake_lib.sent["headers"], "Content-Type") == ["application/x-www-form-urlencoded"]
+
+        session.post(URL, data="raw")
+        assert header_values(fake_lib.sent["headers"], "Content-Type") == []
         assert "Content-Type" not in session.headers
+
+    def test_content_type_set_to_none_suppresses_the_inferred_one(self, session, fake_lib):
+        session.post(URL, json={"a": 1}, headers={"Content-Type": None})
+
+        assert header_values(fake_lib.sent["headers"], "Content-Type") == []
 
     @pytest.mark.parametrize("method", ["post", "put", "patch"])
     def test_body_verbs_take_data_as_second_positional_argument(self, session, fake_lib, method):
@@ -209,14 +220,28 @@ class TestTransportOptions:
 
         assert fake_lib.sent["proxyUrl"] == "http://request-proxy:8080"
 
-    def test_request_timeout_wins_over_session_timeout(self, session, fake_lib):
+    @pytest.mark.parametrize("kwarg", ["timeout", "timeout_seconds"])
+    def test_request_timeout_wins_over_session_timeout(self, session, fake_lib, kwarg):
         session.timeout_seconds = 12
 
         session.get(URL)
-        assert fake_lib.sent["timeoutSeconds"] == 12
+        assert fake_lib.sent["timeoutMilliseconds"] == 12_000
 
-        session.get(URL, timeout_seconds=3)
-        assert fake_lib.sent["timeoutSeconds"] == 3
+        session.get(URL, **{kwarg: 3})
+        assert fake_lib.sent["timeoutMilliseconds"] == 3_000
+
+    def test_timeout_is_sent_in_milliseconds_only(self, session, fake_lib):
+        session.get(URL, timeout=2.5)
+
+        assert fake_lib.sent["timeoutMilliseconds"] == 2_500
+        # The library refuses a request that sets both.
+        assert "timeoutSeconds" not in fake_lib.sent
+
+    def test_timeout_and_timeout_seconds_together_are_rejected(self, session, fake_lib):
+        with pytest.raises(ValueError, match="not both"):
+            session.get(URL, timeout=1, timeout_seconds=2)
+
+        assert fake_lib.payloads == []
 
     @pytest.mark.parametrize(
         ("session_kwargs", "request_kwargs", "payload_key"),
