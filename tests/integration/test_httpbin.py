@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import socket
 from collections.abc import Iterator
@@ -5,8 +6,8 @@ from collections.abc import Iterator
 import pytest
 from httpbin.core import resource as httpbin_resource
 
-from tls_client import Session
-from tls_client.exceptions import TLSClientException
+from tls_client import AsyncSession, Session
+from tls_client.exceptions import TLSClientException, TooManyRedirects
 
 pytestmark = pytest.mark.integration
 
@@ -118,11 +119,61 @@ class TestRedirects:
         assert response.status_code == 302
         assert response.headers["Location"] == "/get"
 
-    def test_followed_when_allowed(self, httpbin, session):
-        response = session.get(f"{httpbin.url}/redirect/2", allow_redirects=True)
+    @pytest.mark.parametrize("path", ["/redirect/3", "/relative-redirect/3", "/absolute-redirect/3"])
+    def test_followed_when_allowed(self, httpbin, session, path):
+        response = session.get(f"{httpbin.url}{path}", allow_redirects=True)
 
         assert response.status_code == 200
         assert response.url == f"{httpbin.url}/get"
+        assert [r.status_code for r in response.history] == [302, 302, 302]
+        assert response.history[0].url == f"{httpbin.url}{path}"
+
+    def test_redirect_to_a_relative_url(self, httpbin, session):
+        response = session.get(f"{httpbin.url}/redirect-to", params={"url": "/get?a=1"}, allow_redirects=True)
+
+        assert response.url == f"{httpbin.url}/get?a=1"
+        assert response.json()["args"] == {"a": "1"}
+
+    @pytest.mark.parametrize(
+        ("status", "method"), [(301, "GET"), (302, "GET"), (303, "GET"), (307, "POST"), (308, "POST")]
+    )
+    def test_post_is_resent_as_the_status_requires(self, httpbin, session, status, method):
+        response = session.post(
+            f"{httpbin.url}/redirect-to",
+            params={"url": "/anything", "status_code": status},
+            data={"a": "1"},
+            allow_redirects=True,
+        )
+
+        echoed = response.json()
+        assert echoed["method"] == method
+        if method == "POST":
+            assert echoed["form"] == {"a": "1"}
+            assert echoed["headers"]["Content-Type"] == "application/x-www-form-urlencoded"
+        else:
+            assert echoed["form"] == {}
+            assert "Content-Type" not in echoed["headers"]
+
+    def test_too_many_redirects_raise(self, httpbin, session):
+        with pytest.raises(TooManyRedirects):
+            session.get(f"{httpbin.url}/redirect/31", allow_redirects=True)
+
+    def test_credentials_and_cookies_stay_with_their_host(self, httpbin, session):
+        session.get(f"{httpbin.url}/cookies/set", params={"flavor": "oat"})
+        other_host = httpbin.url.replace("127.0.0.1", "localhost")
+
+        response = session.get(
+            f"{httpbin.url}/redirect-to",
+            params={"url": f"{other_host}/headers"},
+            headers={"Authorization": "Bearer secret", "X-Custom": "1"},
+            allow_redirects=True,
+        )
+
+        received = response.json()["headers"]
+        assert received["Host"] == other_host.removeprefix("http://")
+        assert received["X-Custom"] == "1"
+        assert "Authorization" not in received
+        assert "Cookie" not in received
 
 
 class TestCookies:
@@ -140,6 +191,23 @@ class TestCookies:
         response = session.get(f"{httpbin.url}/cookies", cookies={"per_request": "3"})
 
         assert response.json() == {"cookies": {"host_only": "1", "per_request": "3"}}
+
+    def test_cookie_set_by_a_redirect_is_stored_and_sent_to_its_target(self, httpbin, session):
+        # /cookies/set answers with the cookie and a redirect to /cookies, which echoes the cookies it receives.
+        response = session.get(f"{httpbin.url}/cookies/set", params={"flavor": "oat"}, allow_redirects=True)
+
+        assert response.history[0].status_code == 302
+        assert response.json() == {"cookies": {"flavor": "oat"}}
+        assert response.cookies["flavor"] == "oat"
+        assert session.cookies["flavor"] == "oat"
+
+    def test_cookie_set_by_a_redirect_reaches_the_async_session_jar(self, httpbin):
+        async def main():
+            async with AsyncSession() as session:
+                await session.get(f"{httpbin.url}/cookies/set", params={"flavor": "oat"}, allow_redirects=True)
+                return session.cookies.get_dict()
+
+        assert asyncio.run(main()) == {"flavor": "oat"}
 
     def test_cleared_cookies_are_no_longer_sent(self, httpbin, session):
         session.get(f"{httpbin.url}/cookies/set", params={"flavor": "oat"})

@@ -102,14 +102,15 @@ class TestRequests:
         assert fake_lib.sent["requestBody"] == "raw"
 
     def test_keyword_arguments_are_forwarded(self, fake_lib):
+        fake_lib.reply_with(status=302, headers={"Location": ["/next"]})
+
         async def main():
             async with AsyncSession() as session:
                 await session.execute_request("GET", URL, params={"q": "1"}, allow_redirects=True)
 
         asyncio.run(main())
 
-        assert fake_lib.sent["requestUrl"] == f"{URL}?q=1"
-        assert fake_lib.sent["followRedirects"] is True
+        assert [payload["requestUrl"] for payload in fake_lib.payloads] == [f"{URL}?q=1", "https://example.com/next"]
 
     def test_requests_use_the_native_session_of_the_wrapped_session(self, fake_lib):
         async def main():
@@ -162,6 +163,37 @@ class TestState:
         assert dict(response.cookies) == {"a": "1", "b": "2"}
         assert dict(session.cookies) == {"a": "1", "b": "2"}
         assert sent_cookies(fake_lib.sent) == {"a": "1", "b": "2"}
+
+    def test_cookies_set_on_every_redirect_hop_end_up_in_the_jar(self, fake_lib):
+        fake_lib.reply_with(status=302, headers={"Location": ["/second"], "Set-Cookie": ["a=1; Path=/"]})
+        fake_lib.reply_with(status=307, headers={"Location": ["/third"], "Set-Cookie": ["b=2; Path=/"]})
+        fake_lib.reply_with(headers={"Set-Cookie": ["c=3; Path=/"]})
+
+        async def main():
+            async with AsyncSession() as session:
+                response = await session.get(URL, allow_redirects=True)
+                await session.get(URL)
+                return session, response
+
+        session, response = asyncio.run(main())
+
+        assert len(response.history) == 2
+        assert dict(session.cookies) == {"a": "1", "b": "2", "c": "3"}
+        assert sent_cookies(fake_lib.payloads[2]) == {"a": "1", "b": "2"}
+        assert sent_cookies(fake_lib.sent) == {"a": "1", "b": "2", "c": "3"}
+
+    def test_cleared_cookies_are_not_sent(self, fake_lib):
+        fake_lib.reply_with(headers={"Set-Cookie": ["a=1; Path=/"]})
+
+        async def main():
+            async with AsyncSession() as session:
+                await session.get(URL)
+                session.cookies.clear()
+                await session.get(URL)
+
+        asyncio.run(main())
+
+        assert sent_cookies(fake_lib.sent) == {}
 
     @pytest.mark.parametrize("cookies", [{"from_request": "2"}, cookiejar_from_dict({"from_request": "2"})])
     def test_request_cookies_are_kept_in_the_jar_like_session_does(self, fake_lib, cookies):
