@@ -8,3 +8,8 @@ dist/
 .ruff_cache/
 .coverage
 htmlcov/
+
+# Native libraries are downloaded by scripts/fetch_library.py, never committed.
+tls_client/dependencies/*.so
+tls_client/dependencies/*.dylib
+tls_client/dependencies/*.dll
