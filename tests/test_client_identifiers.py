@@ -12,7 +12,7 @@ from tls_client import Session
 from tls_client.exceptions import TLSClientException
 from tls_client.settings import CLIENT_IDENTIFIERS
 
-# Upstream's own default (profiles.DefaultClientProfile in tls-client v1.16.0), which it uses for unknown names.
+# Upstream's own default (profiles.DefaultClientProfile in tls-client v1.18.1), which it uses for unknown names.
 # These identifiers send the same ClientHello as the fallback, so the wire can't tell them apart from a typo.
 UPSTREAM_DEFAULT_PROFILES = {"chrome_150", "chrome_150_PSK"}
 

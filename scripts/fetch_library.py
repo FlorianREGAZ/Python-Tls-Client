@@ -18,7 +18,7 @@ import sys
 import urllib.request
 from pathlib import Path
 
-VERSION = "1.16.0"
+VERSION = "1.18.1"
 DOWNLOAD_URL = "https://github.com/bogdanfinn/tls-client/releases/download/v{version}/{asset}"
 RELEASE_API_URL = "https://api.github.com/repos/bogdanfinn/tls-client/releases/tags/v{version}"
 
