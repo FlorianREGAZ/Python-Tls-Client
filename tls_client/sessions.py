@@ -498,6 +498,7 @@ class Session:
         }
         if certificate_pinning:
             request_payload["certificatePinningHosts"] = certificate_pinning
+        request_payload["withRandomTLSExtensionOrder"] = self.random_tls_extension_order
         if self.client_identifier is None:
             request_payload["customTlsClient"] = {
                 "ja3String": self.ja3_string,
@@ -517,7 +518,6 @@ class Session:
             }
         else:
             request_payload["tlsClientIdentifier"] = self.client_identifier
-            request_payload["withRandomTLSExtensionOrder"] = self.random_tls_extension_order
 
         # Sends the request, then with allow_redirects each request a redirect asks for, like requests does.
         history: list[Response] = []
