@@ -544,6 +544,14 @@ class TestTlsProfile:
         assert fake_lib.sent["withRandomTLSExtensionOrder"] is True
         assert "customTlsClient" not in fake_lib.sent
 
+    def test_random_extension_order_is_sent_with_a_custom_profile(self, fake_lib):
+        ja3 = "771,4865-4866-4867,0-23-65281-10-11-35-16-5-13-18-51-45-43-27,29-23-24,0"
+        with Session(client_identifier=None, ja3_string=ja3, random_tls_extension_order=True) as session:
+            session.get(URL)
+
+        assert "tlsClientIdentifier" not in fake_lib.sent
+        assert fake_lib.sent["withRandomTLSExtensionOrder"] is True
+
     def test_custom_settings_are_sent_under_the_keys_the_library_expects(self, fake_lib):
         ja3 = "771,4865-4866-4867,0-23-65281-10-11-35-16-5-13-18-51-45-43-27,29-23-24,0"
         priority_frames = [{"streamID": 3, "priorityParam": {"weight": 201, "streamDep": 0, "exclusive": False}}]
